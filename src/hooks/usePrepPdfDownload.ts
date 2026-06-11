@@ -8,22 +8,14 @@ export function usePrepPdfDownload() {
   const [pdfLoading, setPdfLoading] = useState(false);
   const { toast } = useToast();
 
-  const downloadPdf = useCallback(
-    async (session?: PrepSession | null) => {
-      const data = session ?? loadPrepSession();
-      if (!data) {
-        toast({
-          title: "No preparation found",
-          description: "Generate a demo guide first.",
-          variant: "destructive",
-        });
-        return;
-      }
-
+  const runDownload = useCallback(
+    async (session: PrepSession, includeCallNotes: boolean) => {
       setPdfLoading(true);
       try {
-        await downloadPrepPdf(data);
-        toast({ title: "PDF downloaded" });
+        await downloadPrepPdf(session, { includeCallNotes });
+        toast({
+          title: includeCallNotes ? "PDF + notes downloaded" : "PDF script downloaded",
+        });
       } catch (err) {
         toast({
           title: "PDF failed",
@@ -37,5 +29,37 @@ export function usePrepPdfDownload() {
     [toast],
   );
 
-  return { downloadPdf, pdfLoading };
+  const downloadPdfScript = useCallback(
+    async (session?: PrepSession | null) => {
+      const data = session ?? loadPrepSession();
+      if (!data) {
+        toast({
+          title: "No preparation found",
+          description: "Generate a demo guide first.",
+          variant: "destructive",
+        });
+        return;
+      }
+      await runDownload(data, false);
+    },
+    [runDownload, toast],
+  );
+
+  const downloadPdfWithNotes = useCallback(
+    async (session?: PrepSession | null) => {
+      const data = session ?? loadPrepSession();
+      if (!data) {
+        toast({
+          title: "No preparation found",
+          description: "Generate a demo guide first.",
+          variant: "destructive",
+        });
+        return;
+      }
+      await runDownload(data, true);
+    },
+    [runDownload, toast],
+  );
+
+  return { downloadPdfScript, downloadPdfWithNotes, pdfLoading };
 }

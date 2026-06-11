@@ -33,7 +33,7 @@ const FOCUS_MODULES = [
 const Prepare = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { downloadPdf, pdfLoading } = usePrepPdfDownload();
+  const { downloadPdfScript, downloadPdfWithNotes, pdfLoading } = usePrepPdfDownload();
   const [loading, setLoading] = useState(false);
   const [lastMarkdown, setLastMarkdown] = useState<string | null>(null);
   const [lastClientName, setLastClientName] = useState("");
@@ -287,14 +287,29 @@ const Prepare = () => {
                 size="sm"
                 className="gap-2"
                 disabled={pdfLoading}
-                onClick={() => downloadPdf(loadPrepSession())}
+                onClick={() => downloadPdfScript(loadPrepSession())}
               >
                 {pdfLoading ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
                   <FileDown className="h-4 w-4" />
                 )}
-                {pdfLoading ? "Generating PDF…" : "Download PDF"}
+                PDF script
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="gap-2"
+                disabled={pdfLoading}
+                onClick={() => downloadPdfWithNotes(loadPrepSession())}
+              >
+                {pdfLoading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <FileDown className="h-4 w-4" />
+                )}
+                PDF + notes
               </Button>
             </div>
           </div>

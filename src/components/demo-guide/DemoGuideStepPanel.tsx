@@ -13,7 +13,9 @@ import { cn } from "@/lib/utils";
 import type { DemoVideo, GuideStep } from "@/data/demoGuideSteps";
 import { useDiscoveryChecklist } from "@/hooks/useDiscoveryChecklist";
 import { useExecutiveNotes } from "@/hooks/useExecutiveNotes";
+import { clientSlug as toClientSlug } from "@/lib/callNotesStorage";
 import { DemoGuideDemoDialog } from "./DemoGuideDemoDialog";
+
 interface DemoGuideStepPanelProps {
   step: GuideStep;
   clientName: string;
@@ -24,8 +26,9 @@ function replaceClient(text: string, name: string): string {
 }
 
 export function DemoGuideStepPanel({ step, clientName }: DemoGuideStepPanelProps) {
-  const { toggle, isChecked } = useDiscoveryChecklist();
-  const { notes, setNotes } = useExecutiveNotes();
+  const slug = toClientSlug(clientName);
+  const { toggle, isChecked } = useDiscoveryChecklist(slug);
+  const { notes, setNotes } = useExecutiveNotes(slug);
   const [demoOpen, setDemoOpen] = useState(false);
   const [activeDemo, setActiveDemo] = useState<{ title: string; videos: DemoVideo[] } | null>(null);
 
@@ -177,6 +180,10 @@ export function DemoGuideStepPanel({ step, clientName }: DemoGuideStepPanelProps
 
       {step.kind === "executiveSummary" && (
         <div className="flex flex-col gap-4">
+          <p className="rounded-lg border border-primary/20 bg-primary/[0.04] px-4 py-3 text-sm text-muted-foreground">
+            Saved per client in your browser. Use <strong className="text-foreground">PDF + notes</strong> after
+            the call to export what you wrote.
+          </p>
           <label className="text-sm font-semibold text-foreground">Live notes — challenges & impact</label>
           <textarea
             value={notes}

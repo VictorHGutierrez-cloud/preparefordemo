@@ -18,6 +18,14 @@ Este repositório é o **modelo reutilizável** para preparar e conduzir demos F
 2. Preencha nome, sector, notas de pesquisa
 3. Clique **Generate demo guide**
 4. Use o guia em `/guia` durante a call
+5. Depois da call: **PDF + notes** exporta challenges e perguntas discovery que marcou
+
+### Dois modos de trabalho
+
+| Modo | Quando usar |
+|------|-------------|
+| **Site Vercel** (`/preparar` → `/guia` → PDF script ou PDF + notes) | Dia-a-dia, sem Cursor |
+| **Cursor + repo** (`demo/clientes/`, templates MD, `COMECE-AQUI`) | Prep profundo, customização no código |
 
 ---
 

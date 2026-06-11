@@ -1,26 +1,23 @@
 import { useCallback, useEffect, useState } from "react";
+import { loadExecutiveNotes, saveExecutiveNotes } from "@/lib/callNotesStorage";
 
-const STORAGE_KEY = "factorial-demo-executive-notes";
+export function useExecutiveNotes(clientSlug: string) {
+  const slug = clientSlug || "default";
 
-function loadNotes(): string {
-  try {
-    return localStorage.getItem(STORAGE_KEY) ?? "";
-  } catch {
-    return "";
-  }
-}
-
-export function useExecutiveNotes() {
-  const [notes, setNotes] = useState(loadNotes);
+  const [notes, setNotes] = useState(() => loadExecutiveNotes(slug));
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, notes);
-  }, [notes]);
+    setNotes(loadExecutiveNotes(slug));
+  }, [slug]);
+
+  useEffect(() => {
+    saveExecutiveNotes(slug, notes);
+  }, [slug, notes]);
 
   const clear = useCallback(() => {
     setNotes("");
-    localStorage.removeItem(STORAGE_KEY);
-  }, []);
+    saveExecutiveNotes(slug, "");
+  }, [slug]);
 
   return { notes, setNotes, clear };
 }

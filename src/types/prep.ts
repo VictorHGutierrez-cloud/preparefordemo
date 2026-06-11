@@ -43,3 +43,17 @@ export interface PrepareApiResponse {
   factorialSourceUrls?: string[];
   meta?: PrepMeta;
 }
+
+export interface CheckedDiscoveryQuestion {
+  blockOrArea: string;
+  question: string;
+}
+
+export interface CallNotesExport {
+  executiveNotes: string;
+  checkedQuestions: CheckedDiscoveryQuestion[];
+}
+
+export interface PrepPdfOptions {
+  includeCallNotes: boolean;
+}

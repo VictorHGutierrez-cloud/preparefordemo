@@ -6,18 +6,21 @@ import { DemoGuideStepPanel } from "@/components/demo-guide/DemoGuideStepPanel";
 import { usePrepSession } from "@/hooks/usePrepSession";
 import { downloadPrepMarkdown, clearPrepSession } from "@/lib/prepSession";
 import { usePrepPdfDownload } from "@/hooks/usePrepPdfDownload";
+import { clearCallNotes, clientSlug } from "@/lib/callNotesStorage";
 import { Button } from "@/components/ui/button";
 
 const DemoGuide = () => {
   const [current, setCurrent] = useState(0);
   const { client, guideSteps, hasSession, session, clear } = usePrepSession();
-  const { downloadPdf, pdfLoading } = usePrepPdfDownload();
+  const { downloadPdfScript, downloadPdfWithNotes, pdfLoading } = usePrepPdfDownload();
 
   const step = guideSteps[current];
   const goTo = (i: number) => setCurrent(Math.max(0, Math.min(i, guideSteps.length - 1)));
 
   const handleClear = () => {
+    const slug = clientSlug(client.empresa);
     clearPrepSession();
+    clearCallNotes(slug);
     clear();
     window.location.reload();
   };
@@ -52,21 +55,38 @@ const DemoGuide = () => {
               </Button>
             )}
             {session && (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="gap-1.5 h-8"
-                disabled={pdfLoading}
-                onClick={() => downloadPdf(session)}
-              >
-                {pdfLoading ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                ) : (
-                  <FileDown className="h-3.5 w-3.5" />
-                )}
-                {pdfLoading ? "Generating PDF…" : "Download PDF"}
-              </Button>
+              <>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5 h-8"
+                  disabled={pdfLoading}
+                  onClick={() => downloadPdfScript(session)}
+                >
+                  {pdfLoading ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <FileDown className="h-3.5 w-3.5" />
+                  )}
+                  PDF script
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5 h-8"
+                  disabled={pdfLoading}
+                  onClick={() => downloadPdfWithNotes(session)}
+                >
+                  {pdfLoading ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <FileDown className="h-3.5 w-3.5" />
+                  )}
+                  PDF + notes
+                </Button>
+              </>
             )}
             <Button
               type="button"

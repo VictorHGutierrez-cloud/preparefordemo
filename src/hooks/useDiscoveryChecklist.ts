@@ -1,24 +1,22 @@
 import { useCallback, useEffect, useState } from "react";
+import {
+  type ChecklistState,
+  loadDiscoveryChecklist,
+  saveDiscoveryChecklist,
+} from "@/lib/callNotesStorage";
 
-const STORAGE_KEY = "factorial-demo-discovery-checklist";
+export function useDiscoveryChecklist(clientSlug: string) {
+  const slug = clientSlug || "default";
 
-type ChecklistState = Record<string, boolean>;
-
-function loadState(): ChecklistState {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? (JSON.parse(raw) as ChecklistState) : {};
-  } catch {
-    return {};
-  }
-}
-
-export function useDiscoveryChecklist() {
-  const [checked, setChecked] = useState<ChecklistState>(loadState);
+  const [checked, setChecked] = useState<ChecklistState>(() => loadDiscoveryChecklist(slug));
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(checked));
-  }, [checked]);
+    setChecked(loadDiscoveryChecklist(slug));
+  }, [slug]);
+
+  useEffect(() => {
+    saveDiscoveryChecklist(slug, checked);
+  }, [slug, checked]);
 
   const toggle = useCallback((id: string) => {
     setChecked((prev) => ({ ...prev, [id]: !prev[id] }));
@@ -28,8 +26,8 @@ export function useDiscoveryChecklist() {
 
   const reset = useCallback(() => {
     setChecked({});
-    localStorage.removeItem(STORAGE_KEY);
-  }, []);
+    saveDiscoveryChecklist(slug, {});
+  }, [slug]);
 
-  return { toggle, isChecked, reset };
+  return { toggle, isChecked, reset, checked };
 }

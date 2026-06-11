@@ -1,10 +1,31 @@
 import { createRoot } from "react-dom/client";
 import { createElement } from "react";
-import html2pdf from "html2pdf.js";
-import { PrepPdfDocument, prepPdfFilename } from "@/components/prep/PrepPdfDocument";
-import type { PrepSession } from "@/types/prep";
+import { PrepPdfDocument, prepPdfFilename, prepPdfWithNotesFilename } from "@/components/prep/PrepPdfDocument";
+import { buildCallNotesExport } from "@/lib/buildCallNotesExport";
+import {
+  clientSlug,
+  loadDiscoveryChecklist,
+  loadExecutiveNotes,
+} from "@/lib/callNotesStorage";
+import type { PrepPdfOptions, PrepSession } from "@/types/prep";
 
-export async function downloadPrepPdf(session: PrepSession): Promise<void> {
+export async function downloadPrepPdf(
+  session: PrepSession,
+  options?: PrepPdfOptions,
+): Promise<void> {
+  const slug = clientSlug(session.client.empresa);
+  const includeCallNotes = options?.includeCallNotes ?? false;
+
+  const callNotes = includeCallNotes
+    ? buildCallNotesExport(
+        session.guideSteps,
+        loadDiscoveryChecklist(slug),
+        loadExecutiveNotes(slug),
+      )
+    : undefined;
+
+  const html2pdf = (await import("html2pdf.js")).default;
+
   const container = document.createElement("div");
   container.style.position = "fixed";
   container.style.left = "-9999px";
@@ -14,7 +35,7 @@ export async function downloadPrepPdf(session: PrepSession): Promise<void> {
   const root = createRoot(container);
 
   try {
-    root.render(createElement(PrepPdfDocument, { session }));
+    root.render(createElement(PrepPdfDocument, { session, callNotes }));
 
     await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
 
@@ -23,10 +44,14 @@ export async function downloadPrepPdf(session: PrepSession): Promise<void> {
       throw new Error("Failed to render PDF document");
     }
 
+    const filename = includeCallNotes
+      ? prepPdfWithNotesFilename(session.client.empresa)
+      : prepPdfFilename(session.client.empresa);
+
     await html2pdf()
       .set({
         margin: [10, 10, 10, 10],
-        filename: prepPdfFilename(session.client.empresa),
+        filename,
         image: { type: "jpeg", quality: 0.95 },
         html2canvas: { scale: 2, useCORS: true, logging: false },
         jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
