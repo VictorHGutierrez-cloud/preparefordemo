@@ -15,20 +15,9 @@ import {
 import { callPrepareApi } from "@/lib/prepApi";
 import { downloadPrepMarkdown, loadPrepSession, savePrepSession } from "@/lib/prepSession";
 import { usePrepPdfDownload } from "@/hooks/usePrepPdfDownload";
+import { FOCUS_MODULE_GROUPS } from "@/data/factorialModuleOptions";
 import type { PrepareFormData } from "@/types/prep";
 import { useToast } from "@/hooks/use-toast";
-
-const FOCUS_MODULES = [
-  { id: "recruitment", label: "Recruitment" },
-  { id: "onboarding", label: "Onboarding" },
-  { id: "time-tracking", label: "Time & Attendance" },
-  { id: "time-off", label: "Leave Management" },
-  { id: "documents", label: "Documents" },
-  { id: "communication", label: "Communication" },
-  { id: "trainings", label: "Trainings" },
-  { id: "performance", label: "Performance" },
-  { id: "engagement", label: "Engagement" },
-] as const;
 
 const Prepare = () => {
   const navigate = useNavigate();
@@ -44,7 +33,7 @@ const Prepare = () => {
     industry: "",
     employeeCount: "",
     demoGoal: "",
-    focusModules: ["recruitment", "time-tracking", "time-off"],
+    focusModules: ["time-tracking", "time-off", "shifts"],
     researchNotes: "",
   });
 
@@ -66,15 +55,6 @@ const Prepare = () => {
       toast({ title: "Client name required", variant: "destructive" });
       return;
     }
-    if (form.researchNotes.trim().length < 20) {
-      toast({
-        title: "Add more research notes",
-        description: "At least 20 characters (SDR notes, LinkedIn, website, etc.)",
-        variant: "destructive",
-      });
-      return;
-    }
-
     setLoading(true);
     try {
       const result = await callPrepareApi({
@@ -98,8 +78,9 @@ const Prepare = () => {
       const meta = result.meta;
       const factorialCount = result.factorialSourceUrls?.length ?? 0;
       const clientCount = result.clientSourceUrls?.length ?? 0;
+      const queriesRun = meta?.factorialQueriesRun;
       const sourceDesc = meta
-        ? `${factorialCount} Factorial docs · ${clientCount} client sources`
+        ? `${factorialCount} Factorial docs · ${clientCount} client sources${queriesRun ? ` · ${queriesRun} searches` : ""}`
         : `${result.citedUrls.length} sources cited`;
 
       toast({
@@ -213,42 +194,48 @@ const Prepare = () => {
             </div>
           </div>
 
-          <div className="flex flex-col gap-3">
+          <div className="flex flex-col gap-4">
             <Label>Focus modules</Label>
-            <div className="flex flex-wrap gap-2">
-              {FOCUS_MODULES.map((mod) => {
-                const active = form.focusModules.includes(mod.id);
-                return (
-                  <button
-                    key={mod.id}
-                    type="button"
-                    onClick={() => toggleModule(mod.id)}
-                    className={`rounded-full border px-3 py-1.5 text-sm font-medium transition-colors ${
-                      active
-                        ? "border-primary bg-primary text-primary-foreground"
-                        : "border-border bg-muted/30 text-muted-foreground hover:text-foreground"
-                    }`}
-                  >
-                    {mod.label}
-                  </button>
-                );
-              })}
-            </div>
+            {FOCUS_MODULE_GROUPS.map((group) => (
+              <div key={group.title}>
+                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  {group.title}
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {group.modules.map((mod) => {
+                    const active = form.focusModules.includes(mod.id);
+                    return (
+                      <button
+                        key={mod.id}
+                        type="button"
+                        onClick={() => toggleModule(mod.id)}
+                        className={`rounded-full border px-3 py-1.5 text-sm font-medium transition-colors ${
+                          active
+                            ? "border-primary bg-primary text-primary-foreground"
+                            : "border-border bg-muted/30 text-muted-foreground hover:text-foreground"
+                        }`}
+                      >
+                        {mod.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
           </div>
 
           <div className="flex flex-col gap-2">
-            <Label htmlFor="researchNotes">Research notes *</Label>
+            <Label htmlFor="researchNotes">Research notes (optional)</Label>
             <Textarea
               id="researchNotes"
-              placeholder="Include: location, portfolio/projects, workforce type (office vs field), headcount if known, SDR notes, LinkedIn, website..."
+              placeholder="Optional — leave blank if you only have the company name. Add: location, portfolio, workforce type, SDR notes, LinkedIn..."
               rows={10}
               value={form.researchNotes}
               onChange={(e) => setForm({ ...form, researchNotes: e.target.value })}
-              required
             />
             <p className="text-xs text-muted-foreground">
-              Minimum 20 characters. Portfolio and location help the icebreaker. Only facts from here
-              will be used about the client.
+              If empty, AI researches the web from the company name only. More notes = sharper
+              icebreaker and discovery.
             </p>
           </div>
 

@@ -1,4 +1,12 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
+import {
+  FOCUS_MODULE_IDS,
+  FOCUS_TO_DISCOVERY_FROM_CATALOG,
+  buildFollowUpQueries,
+  buildTavilyQueriesForModules,
+  catalogDemoAreas,
+  formatCatalogForPrompt,
+} from "./factorialModuleCatalog";
 
 // --- types & defaults (inlined for Vercel ESM bundle) ---
 
@@ -77,6 +85,7 @@ interface SearchMeta {
   tavilyEnabled: boolean;
   clientSourceCount: number;
   factorialSourceCount: number;
+  factorialQueriesRun: number;
   model: string;
 }
 
@@ -249,6 +258,15 @@ const AREA_VIDEO_KEYS: Record<string, string[]> = {
   Trainings: ["trainings"],
   Performance: ["performance"],
   Engagement: ["engagement"],
+  "Shift Planning": [],
+  "Project Management": [],
+  Expenses: [],
+  "Trust Channel": [],
+  "Accounts Payable": [],
+  Procurement: [],
+  "Space Management": [],
+  "Software Management": [],
+  "IT Inventory": [],
 };
 
 function videosForArea(area: string, focusModules: string[]): DemoVideo[] {
@@ -352,21 +370,9 @@ async function searchFactorialDocs(
 ): Promise<TavilyHit[]> {
   return tavilySearch(query, {
     includeDomains: factorialDomains(language),
-    maxResults: 4,
+    maxResults: 5,
   });
 }
-
-const MODULE_SEARCH_TERMS: Record<string, string> = {
-  recruitment: "recruitment ATS hiring candidates",
-  onboarding: "onboarding employee documents signatures",
-  "time-tracking": "time tracking attendance clock in mobile GPS",
-  "time-off": "time off leave management approvals",
-  documents: "employee documents digital files",
-  communication: "announcements payslips employee portal",
-  trainings: "trainings learning LMS",
-  performance: "performance review evaluations",
-  engagement: "engagement surveys one on one",
-};
 
 function formatExcerpts(hits: TavilyHit[]): string {
   return hits
@@ -383,56 +389,9 @@ function uniqueUrls(urls: Array<string | undefined>): string[] {
   return [...new Set(urls.filter((u): u is string => Boolean(u)))];
 }
 
-const CANONICAL_DEMO_AREAS: Record<string, DemoArea> = {
-  recruitment: {
-    area: "Recruitment",
-    modules: ["Candidate pipeline", "Hiring stages", "Hiring manager collaboration", "Offer management"],
-  },
-  onboarding: {
-    area: "Onboarding",
-    modules: ["Electronic signatures", "Document collection", "Employee portal", "Task automation"],
-  },
-  "time-tracking": {
-    area: "Time & Attendance",
-    modules: ["Mobile clock-in", "GPS validation", "Attendance dashboard", "Timesheets"],
-  },
-  "time-off": {
-    area: "Leave Management",
-    modules: ["Approval workflows", "Leave calendar", "Team visibility"],
-  },
-  documents: {
-    area: "Document Management",
-    modules: ["Digital employee files", "Permissions", "Compliance storage"],
-  },
-  communication: {
-    area: "Internal Communication",
-    modules: ["Payslips", "Announcements", "Employee self-service"],
-  },
-  trainings: {
-    area: "Trainings",
-    modules: ["Learning management (LMS)", "Automatic certificates", "Compliance training"],
-  },
-  performance: {
-    area: "Performance",
-    modules: ["Performance reviews", "Peer reviews", "Goal tracking"],
-  },
-  engagement: {
-    area: "Engagement",
-    modules: ["Surveys", "One-on-one meetings", "Team pulse"],
-  },
-};
+const CANONICAL_DEMO_AREAS: Record<string, DemoArea> = catalogDemoAreas();
 
-const FOCUS_TO_DISCOVERY: Record<string, string> = {
-  recruitment: "recruitment",
-  onboarding: "onboarding",
-  "time-tracking": "attendance",
-  "time-off": "leave",
-  documents: "documents",
-  communication: "communication",
-  trainings: "communication",
-  performance: "communication",
-  engagement: "communication",
-};
+const FOCUS_TO_DISCOVERY = FOCUS_TO_DISCOVERY_FROM_CATALOG;
 
 function cleanModuleLabel(raw: string): string {
   let label = raw.trim();
@@ -478,6 +437,15 @@ function bestHelpUrl(
     trainings: ["training", "lms", "learning"],
     performance: ["performance", "review"],
     engagement: ["survey", "engagement", "one-on-one"],
+    shifts: ["shift", "schedule", "roster", "planning"],
+    projects: ["project", "subproject", "billable"],
+    expenses: ["expense", "receipt", "mileage", "card"],
+    complaints: ["complaint", "whistleblower", "trust"],
+    "accounts-payable": ["payable", "invoice", "vendor"],
+    procurement: ["procurement", "purchase", "vendor"],
+    space: ["space", "desk", "booking", "workplace"],
+    "software-management": ["software", "saas", "license"],
+    "it-inventory": ["inventory", "device", "hardware"],
   };
 
   const keys = keywords[focusKey] ?? [focusKey];
@@ -665,7 +633,8 @@ QUALITY BAR (match this depth for construction, fit-out, retail, logistics, etc.
 RULES:
 - clientBullets: 4-6 specific bullets from research notes + client web excerpts ONLY. Include workforce type, sites/projects, industry context.
 - employeeCountResearch: NEVER invent headcount. foundInResearch only if explicitly in notes/web; else null. displayNote always says to confirm on call if uncertain.
-- For Factorial modules: short demo labels (2-5 words). NEVER copy article titles.
+- For Factorial modules: short demo labels (2-5 words) from FACTORIAL DOCUMENTATION EXCERPTS only. NEVER copy article titles.
+- factorialValueProp: may reference bundle hints from MODULE CATALOG (no prices). Map construction/field pains to Time Tracking + Shifts + Projects when selected.
 - citedUrls: only help.factorialhr.com URLs from factorial excerpts.
 - closingScript: 3-5 sentences, specific to client name and industry.
 - Respond in the user's language.
@@ -731,9 +700,8 @@ async function generatePrep(
 
   const tavilyEnabled = Boolean(process.env.TAVILY_API_KEY);
 
-  const factorialQueries = input.focusModules
-    .map((m) => MODULE_SEARCH_TERMS[m] ?? m)
-    .slice(0, 4);
+  const factorialQueries = buildTavilyQueriesForModules(input.focusModules);
+  let factorialQueriesRun = factorialQueries.length;
 
   const [profileHits, portfolioHits, scaleHits, ...factorialHitGroups] = await Promise.all([
     searchClientProfile(input.clientName, input.industry),
@@ -743,16 +711,28 @@ async function generatePrep(
   ]);
 
   const clientHits = mergeTavilyHits(profileHits, portfolioHits, scaleHits);
-  const factorialHits = factorialHitGroups.flat();
+  let factorialHits = factorialHitGroups.flat();
+
+  if (factorialHits.length < 6 && tavilyEnabled) {
+    const followUp = buildFollowUpQueries(input.industry, input.focusModules);
+    factorialQueriesRun += followUp.length;
+    const followUpGroups = await Promise.all(
+      followUp.map((q) => searchFactorialDocs(q, input.language)),
+    );
+    factorialHits = mergeTavilyHits(factorialHits, ...followUpGroups);
+  }
+
   const profileContext = formatExcerpts(profileHits);
   const portfolioContext = formatExcerpts(portfolioHits);
   const scaleContext = formatExcerpts(scaleHits);
   const docContext = formatExcerpts(factorialHits);
+  const catalogContext = formatCatalogForPrompt(input.focusModules);
 
   const searchMeta: SearchMeta = {
     tavilyEnabled,
     clientSourceCount: clientHits.length,
     factorialSourceCount: factorialHits.length,
+    factorialQueriesRun,
     model,
   };
 
@@ -780,7 +760,10 @@ ${portfolioContext || "No portfolio results. Use honest generic icebreaker."}
 CLIENT SCALE / HEADCOUNT (extract employee count only if explicitly stated):
 ${scaleContext || "No headcount found. Set foundInResearch to null."}
 
-FACTORIAL DOCUMENTATION EXCERPTS (only source for product/module names):
+FACTORIAL MODULE CATALOG (commercial reference — verify product names in excerpts below):
+${catalogContext}
+
+FACTORIAL DOCUMENTATION EXCERPTS (only source for product/module names and citedUrls):
 ${docContext || "No factorial docs found. Use generic area names only. citedUrls must be empty."}`;
 
   const response = await fetch("https://api.openai.com/v1/chat/completions", {
@@ -1167,17 +1150,7 @@ interface RequestBody {
   researchNotes?: string;
 }
 
-const FOCUS_OPTIONS = [
-  "recruitment",
-  "onboarding",
-  "time-tracking",
-  "time-off",
-  "documents",
-  "communication",
-  "trainings",
-  "performance",
-  "engagement",
-];
+const FOCUS_OPTIONS = FOCUS_MODULE_IDS;
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader("Access-Control-Allow-Origin", "*");
@@ -1196,16 +1169,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const body = (req.body ?? {}) as RequestBody;
 
     const clientName = body.clientName?.trim();
-    const researchNotes = body.researchNotes?.trim();
 
     if (!clientName) {
       return res.status(400).json({ error: "clientName is required" });
     }
-    if (!researchNotes || researchNotes.length < 20) {
-      return res.status(400).json({
-        error: "researchNotes is required (minimum 20 characters)",
-      });
-    }
+
+    const researchNotes =
+      body.researchNotes?.trim() ||
+      `Research from web only for ${clientName}. No prior SDR notes — infer industry, workforce, and scale from public sources.`;
 
     const input: PrepInput = {
       clientName,
@@ -1213,13 +1184,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       industry: body.industry?.trim() || "Not specified",
       employeeCount: body.employeeCount?.trim() || "Not specified",
       demoGoal: body.demoGoal?.trim() || `Prepare a discovery-led Factorial demo for ${clientName}`,
-      focusModules: (body.focusModules ?? ["recruitment", "time-tracking", "time-off"]).filter((m) =>
+      focusModules: (body.focusModules ?? ["time-tracking", "time-off", "shifts"]).filter((m) =>
         FOCUS_OPTIONS.includes(m),
       ),
     };
 
     if (input.focusModules.length === 0) {
-      input.focusModules = ["recruitment", "time-tracking", "time-off"];
+      input.focusModules = ["time-tracking", "time-off", "shifts"];
     }
 
     const { ai, searchMeta } = await generatePrep(input, researchNotes);

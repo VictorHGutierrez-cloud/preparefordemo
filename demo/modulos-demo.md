@@ -104,3 +104,102 @@ Vídeos reutilizáveis: `src/data/factorialDemoVideos.ts` · Catálogo completo:
 |--------|-------|
 | One-on-one meetings | `FACTORIAL_DEMO_VIDEOS.engagement.oneOnOne` |
 | Surveys | `FACTORIAL_DEMO_VIDEOS.engagement.surveys` |
+
+---
+
+## Shift Management
+
+**Mostrar quando:** equipas rotativas, múltiplos sites, planeamento manual de turnos.
+
+| Tópico | Notas |
+|--------|-------|
+| Shift planning / roster | Confirmar no help center |
+| Bulk assign / shift swap | Confirmar na documentação |
+
+---
+
+## Projects
+
+**Mostrar quando:** custo por projecto, tempo por obra, múltiplos subprojectos.
+
+| Tópico | Notas |
+|--------|-------|
+| Project time tracking | Confirmar no help center |
+| Cost per employee / subprojects | Confirmar na documentação |
+
+---
+
+## Expenses
+
+**Mostrar quando:** despesas em papel, aprovações lentas, quilometragem manual.
+
+| Tópico | Notas |
+|--------|-------|
+| Employee expenses / mileage | Confirmar no help center |
+| Expense reports / finance workspace | Confirmar na documentação |
+
+---
+
+## Complaints Channel
+
+**Mostrar quando:** canal informal de queixas, compliance, whistleblowing.
+
+| Tópico | Notas |
+|--------|-------|
+| Anonymous complaints | Confirmar no help center |
+| Case management | Confirmar na documentação |
+
+---
+
+## Accounts Payable
+
+**Mostrar quando:** facturas fornecedor dispersas, aprovações financeiras lentas.
+
+| Tópico | Notas |
+|--------|-------|
+| Invoice processing | Confirmar no help center |
+| Approval workflows | Confirmar na documentação |
+
+---
+
+## Procurement
+
+**Mostrar quando:** compras ad-hoc, falta de visibilidade de pedidos.
+
+| Tópico | Notas |
+|--------|-------|
+| Purchase requests | Confirmar no help center |
+| Vendor management | Confirmar na documentação |
+
+---
+
+## Space
+
+**Mostrar quando:** escritórios híbridos, reservas de salas, workplace management.
+
+| Tópico | Notas |
+|--------|-------|
+| Desk / room booking | Confirmar no help center |
+| Office occupancy | Confirmar na documentação |
+
+---
+
+## Software Management
+
+**Mostrar quando:** shadow IT, licenças dispersas, onboarding/offboarding de apps.
+
+| Tópico | Notas |
+|--------|-------|
+| Software catalog / access | Confirmar no help center |
+| License tracking | Confirmar na documentação |
+
+---
+
+## IT Inventory
+
+**Mostrar quando:** activos IT sem inventário, atribuição de equipamento manual.
+
+| Tópico | Notas |
+|--------|-------|
+| Device inventory | Confirmar no help center |
+| Asset assignment | Confirmar na documentação |

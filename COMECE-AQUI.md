@@ -10,6 +10,16 @@ Este repositório é o **modelo reutilizável** para preparar e conduzir demos F
 
 **Deploy recomendado:** Vercel — ver [docs/VERCEL-DEPLOY.md](docs/VERCEL-DEPLOY.md)
 
+### Manter o catálogo de módulos actualizado
+
+O ficheiro `✅ Funcionalidades de cada módulo - Factorial RH.gsheet` no repo é só um atalho ao Google Sheets. O conteúdo real está em:
+
+1. `docs/factorial-funcionalidades-modulos.md` — export do spreadsheet
+2. `api/factorialModuleCatalog.ts` — catálogo usado pela API (queries Tavily + prompt)
+3. `src/data/factorialModuleOptions.ts` — opções no formulário `/preparar`
+
+**Quando o spreadsheet mudar:** re-exporte para o `.md`, depois actualize o catálogo API e as opções UI para ficarem alinhados.
+
 ---
 
 ## Modo rápido (Vercel — sem Cursor)

@@ -12,6 +12,7 @@ export interface PrepMeta {
   tavilyEnabled: boolean;
   clientSourceCount: number;
   factorialSourceCount: number;
+  factorialQueriesRun?: number;
   model: string;
 }
 
