@@ -1,0 +1,9 @@
+# Cole aqui notas de pesquisa para a pre-demo
+#
+# Instrucoes:
+# 1. Apague estas linhas de instrucao
+# 2. Cole: notas SDR, LinkedIn, site da empresa, pesquisa de mercado, ou transcricao de call anterior
+# 3. Abra esta pasta no Cursor
+# 4. Siga o ficheiro COMECE-AQUI.md na raiz
+#
+# O Agent usa ESTE ficheiro como fonte dos factos sobre o cliente.

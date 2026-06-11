@@ -1,0 +1,48 @@
+---
+description: Pre-demo preparation workflow — client research, prep.md, demo guide updates
+globs: demo/**/*,src/data/demoGuideSteps.ts,src/utils/constants.ts,transcricao/**/*
+alwaysApply: false
+---
+
+# Pre-Demo Workflow
+
+When preparing a Factorial demo for a client:
+
+## 1. Read inputs
+
+- `cliente.config.json` — clientName, clientSlug, language, industry, demoGoal, focusModules
+- `transcricao/reuniao.txt` — research notes, SDR notes, LinkedIn, company website, or call transcript
+- `demo/TEMPLATE-pre-demo.md` — structure for output
+- `demo/areas-discovery.md` — discovery question bank
+
+## 2. Research client
+
+Summarize what you learned about the client (operations, scale, pain points). Do not invent facts not in the notes.
+
+## 3. Map pains to Factorial (documentation only)
+
+For each likely pain area, search official Factorial documentation (see factorial-documentation-assistant rule). Only recommend modules and features confirmed in help center or API docs. Cite URLs.
+
+## 4. Generate client prep file
+
+Create or update `demo/clientes/{clientSlug}/prep.md` from `demo/TEMPLATE-pre-demo.md` with:
+
+- Client-specific context in sections 1–2
+- Relevant discovery areas emphasized in section 3
+- Focus modules for section 6 (demo) aligned with `focusModules` in config
+- Closing script adapted to client language and industry
+
+## 5. Update web demo guide
+
+Update `src/data/demoGuideSteps.ts` and `src/utils/constants.ts`:
+
+- Replace placeholders with client name, industry, demo goal
+- Customize section 2 (What We Learned) from research notes
+- Set discovery checklist items from prep
+- Link demo videos from `src/data/factorialDemoVideos.ts` for focus modules
+
+## 6. Do not
+
+- Generate commercial proposals or pricing slides (out of scope)
+- Use `docs/factorial-funcionalidades-modulos.md` for product feature names in the demo guide
+- Invent client facts or Factorial capabilities

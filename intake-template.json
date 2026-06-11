@@ -1,0 +1,15 @@
+{
+  "_instructions": "Copy to intake-NOME-CLIENTE.json before demo prep. Fill from transcricao/reuniao.txt. Delete this _instructions field before commit.",
+  "organizationName": "[Client name]",
+  "clientSlug": "[client-slug]",
+  "sellerName": "Victor Gutierrez",
+  "language": "en",
+  "industry": "[Industry]",
+  "employeeCount": "[N employees]",
+  "demoGoal": "[Today's goal for the demo]",
+  "focusModules": ["recruitment", "time-tracking", "time-off", "documents"],
+  "context": "[Company context from research notes]",
+  "priorities": "[Top priorities, comma-separated]",
+  "discoveryEmphasis": ["recruitment", "attendance", "onboarding"],
+  "closingTheme": "[Scaling people operations — adapt to client]"
+}

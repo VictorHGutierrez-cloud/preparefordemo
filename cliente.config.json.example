@@ -1,0 +1,11 @@
+{
+  "clientName": "Jirani",
+  "clientSlug": "jirani",
+  "repoName": "demo-jirani",
+  "githubUser": "VictorHGutierrez-cloud",
+  "language": "en",
+  "industry": "Retail / Asset financing",
+  "employeeCount": "500+",
+  "demoGoal": "Validate recruitment and field attendance challenges",
+  "focusModules": ["recruitment", "time-tracking", "time-off", "documents"]
+}

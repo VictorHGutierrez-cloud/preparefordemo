@@ -1,0 +1,106 @@
+Factorial Core
+All plans include Factorial Core, which provides the essential day-to-day tools for your team and ensures your company runs smoothly.
+Creation of multiple legal entities
+Differentiate the legal entities that make up your company and attribute different characteristics to them, if necessary
+Contracts
+Centralise and organise in one place the legally defined employment information for each of your employees
+Custom workflows for promotion approvals & contract changes
+Design a collaborative process for your managers and ease-up the workload
+Assign job range & roles
+Centralise all information related to the role ranges and salary range of jobs in your company
+Customizable contract fields
+Tasks Management
+Create and assign tasks to your employees
+Custom notifications
+Create custom automations and notify your team and other departments, based on the selected criteria.
+Custom Permissions
+Define the roles and actions that each employee can do inside Factorial
+Document management
+Centralise and manage all your important company and employee files in the cloud
+Send documents in bulk
+Import and send contracts, payslips or any type of document to your employees in bulk
+Legal E-signature
+Sign legally valid documents online
+Employee directory
+Organize all your employees' documents in the cloud by creating specific folders for them
+Create Custom Communities
+Create communities to select a specific group to receive announcements and events
+Org Chart
+Clearly visualise the structure, hierarchy and organisation of your company with labels
+Onboarding/Offboarding
+Define and assign tasks for onboarding and offboarding
+Work Schedules
+Plan and define the number of hours that make up your employees' working day
+Financial Insights
+Control and understand your company cost and evolution.
+Estimated company cost data
+Based on the contractual agreement, visualise the cost of each employee.
+Cost Centre distribution costs
+Get automatic cost insights from the cost centre
+Real Company Cost Data
+Upgrade to real Company Cost Data partnering with  our payroll results. 
+Guided Payroll Process
+Get guided through the entire payroll cycle, from setting up add-ons to finalising employee payments
+Integration with your Payroll Software
+We have integrations available with Payroll softwares in our Marketplace
+Collaborative payroll cycle
+Facilitates collaboration with administrators, managers and other company profiles during payroll preparation and review.
+Payslip distribution
+Easily pay your employees at once by distributing your payslips in bulk and saving time
+Reimburse expenses directly through payroll
+Reimburse the amount of expenses charged directly to your employees’ payslips
+Payroll validation and review
+Payroll insights and cost evolution overview
+Review all the investments in your employees' payroll and draw conclusions.
+Multiple-step supplements validation
+Allows validation of payroll supplements by multiple roles within your company.
+Automated payroll incidence management
+Incidences dashboard with all employee updates
+Follow-up on real-time everything that affects your payroll calculation
+Access to Factorial Professionals
+Our exclusive app for your bookkeeper to manage all incidences and review your payroll results
+Events
+Publish your company events to inform your teams and invite your employees
+Employee Birthdays reminder
+Communicate an employee's anniversary so that everyone can congratulate them
+Company anniversaries
+Publish your employees' work anniversaries
+Pay directly from Factorial
+Career Page
+You will be able to publish on your own public page all the job offers available in your company
+Single Sign-On (SSO)
+Allows employees to log in to Factorial with their corporate email address and without a password
+Announcements
+Create announcements about activities, hobbies and more within your company
+Variables & supplements automation
+Automate the creation and definition of additional information for your employees
+Approval multi-levels
+Create approval and monitoring flows for the requests your employees create in Factorial.
+Payroll Processing with Cimplx
+Use Cimplx to generate pay stamements using all the necessary incidence data from Factorial
+Document Templates
+Enterprise
+Create documents using the data inside Factorial
+Multiple dimensions
+Enterprise
+Create more dimensions apart from cost centres to categorise costs
+Custom Reports
+Enterprise
+Build reports by choosing the variables and format you need to extract current data from Factorial
+API Keys
+Enterprise
+Create custom API keys according to your needs
+Custom fields and tables
+Enterprise
+Create customized fields and tables with any information you need about your employees
+SQL reports creation
+Enterprise
+Create more complex custom reports using the SQL programming language
+Multi-currency
+Enterprise
+Have a consolidated view of all your legal entities’ costs in the parent currency.
+Audit Log
+Enterprise
+Control who does what within the platform
+ Fillable PDFs
+Enterprise
