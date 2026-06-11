@@ -7,7 +7,18 @@ export async function callPrepareApi(data: PrepareFormData): Promise<PrepareApiR
     body: JSON.stringify(data),
   });
 
-  const payload = (await response.json()) as PrepareApiResponse & { error?: string };
+  const text = await response.text();
+
+  let payload: PrepareApiResponse & { error?: string };
+  try {
+    payload = JSON.parse(text) as PrepareApiResponse & { error?: string };
+  } catch {
+    throw new Error(
+      text.startsWith("A server error")
+        ? "Server error on Vercel. Check Function Logs in the Vercel dashboard."
+        : text.slice(0, 200) || `Request failed (${response.status})`,
+    );
+  }
 
   if (!response.ok) {
     throw new Error(payload.error ?? `Request failed (${response.status})`);
