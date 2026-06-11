@@ -271,7 +271,18 @@ async function generatePrep(input: PrepInput, researchNotes: string): Promise<AI
     throw new Error("OPENAI_API_KEY is not configured on the server.");
   }
 
-  const model = process.env.OPENAI_MODEL ?? "gpt-4o-mini";
+  const ALLOWED_MODELS = new Set([
+    "gpt-4o-mini",
+    "gpt-4o",
+    "gpt-4o-2024-08-06",
+    "gpt-4o-mini-2024-07-18",
+    "gpt-4.1-mini",
+    "gpt-4.1-nano",
+    "gpt-4-turbo",
+  ]);
+  const envModel = process.env.OPENAI_MODEL?.trim();
+  const model =
+    envModel && ALLOWED_MODELS.has(envModel) ? envModel : "gpt-4o-mini";
 
   const searchQueries = [...input.focusModules, `${input.industry} HR`].slice(0, 2);
   const docResults = await Promise.all(

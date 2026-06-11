@@ -68,7 +68,7 @@ Depois, na dashboard Vercel → **Settings → Environment Variables**:
 | Nome | Valor |
 |------|-------|
 | `OPENAI_API_KEY` | sua chave `sk-...` |
-| `OPENAI_MODEL` | `gpt-4o` |
+| `OPENAI_MODEL` | `gpt-4o-mini` (exact spelling — see below) |
 | `TAVILY_API_KEY` | (opcional) |
 
 **Redeploy** após adicionar variáveis:
