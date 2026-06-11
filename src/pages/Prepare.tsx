@@ -94,8 +94,10 @@ const Prepare = () => {
       setLastClientName(form.clientName.trim());
 
       const meta = result.meta;
+      const factorialCount = result.factorialSourceUrls?.length ?? 0;
+      const clientCount = result.clientSourceUrls?.length ?? 0;
       const sourceDesc = meta
-        ? `${result.citedUrls.length} sources · ${meta.clientSourceCount} client · ${meta.factorialSourceCount} Factorial docs`
+        ? `${factorialCount} Factorial docs · ${clientCount} client sources`
         : `${result.citedUrls.length} sources cited`;
 
       toast({
@@ -103,7 +105,7 @@ const Prepare = () => {
         description: meta?.tavilyEnabled
           ? sourceDesc
           : `${sourceDesc}. Tip: add TAVILY_API_KEY on Vercel for richer research.`,
-        variant: meta?.tavilyEnabled ? "default" : "destructive",
+        variant: meta?.tavilyEnabled && factorialCount > 0 ? "default" : "destructive",
       });
 
       navigate("/guia");

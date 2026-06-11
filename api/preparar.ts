@@ -16,11 +16,19 @@ interface PrepInput {
   focusModules: string[];
 }
 
+interface DemoArea {
+  area: string;
+  modules: string[];
+  helpUrl?: string;
+}
+
 interface AIPrepPayload {
   clientBullets: string[];
   closingScript: string;
   citedUrls: string[];
-  focusDemoAreas: Array<{ area: string; modules: string[]; helpUrl?: string }>;
+  clientSourceUrls: string[];
+  factorialSourceUrls: string[];
+  focusDemoAreas: DemoArea[];
   discoveryAreaIds?: string[];
   discoveryEmphasis?: Record<string, string>;
   scalingChallenge?: string;
@@ -303,12 +311,212 @@ function formatExcerpts(hits: TavilyHit[]): string {
     .join("\n\n");
 }
 
+function isFactorialUrl(url: string): boolean {
+  return url.includes("help.factorialhr.com") || url.includes("apidoc.factorialhr.com");
+}
+
+function uniqueUrls(urls: Array<string | undefined>): string[] {
+  return [...new Set(urls.filter((u): u is string => Boolean(u)))];
+}
+
+const CANONICAL_DEMO_AREAS: Record<string, DemoArea> = {
+  recruitment: {
+    area: "Recruitment",
+    modules: ["Candidate pipeline", "Hiring stages", "Hiring manager collaboration", "Offer management"],
+  },
+  onboarding: {
+    area: "Onboarding",
+    modules: ["Electronic signatures", "Document collection", "Employee portal", "Task automation"],
+  },
+  "time-tracking": {
+    area: "Time & Attendance",
+    modules: ["Mobile clock-in", "GPS validation", "Attendance dashboard", "Timesheets"],
+  },
+  "time-off": {
+    area: "Leave Management",
+    modules: ["Approval workflows", "Leave calendar", "Team visibility"],
+  },
+  documents: {
+    area: "Document Management",
+    modules: ["Digital employee files", "Permissions", "Compliance storage"],
+  },
+  communication: {
+    area: "Internal Communication",
+    modules: ["Payslips", "Announcements", "Employee self-service"],
+  },
+  trainings: {
+    area: "Trainings",
+    modules: ["Learning management (LMS)", "Automatic certificates", "Compliance training"],
+  },
+  performance: {
+    area: "Performance",
+    modules: ["Performance reviews", "Peer reviews", "Goal tracking"],
+  },
+  engagement: {
+    area: "Engagement",
+    modules: ["Surveys", "One-on-one meetings", "Team pulse"],
+  },
+};
+
+const FOCUS_TO_DISCOVERY: Record<string, string> = {
+  recruitment: "recruitment",
+  onboarding: "onboarding",
+  "time-tracking": "attendance",
+  "time-off": "leave",
+  documents: "documents",
+  communication: "communication",
+  trainings: "communication",
+  performance: "communication",
+  engagement: "communication",
+};
+
+function cleanModuleLabel(raw: string): string {
+  let label = raw.trim();
+  label = label.replace(/^about (the )?/i, "");
+  label = label.replace(/^how to /i, "");
+  label = label.replace(/^access /i, "");
+  label = label.replace(/ through .+$/i, "");
+  label = label.replace(/ in (ATS|Factorial).*$/i, "");
+  label = label.replace(/\.$/, "");
+  if (label.length > 50) {
+    label = label.split(/[,;]/)[0] ?? label.slice(0, 50);
+  }
+  return label.charAt(0).toUpperCase() + label.slice(1);
+}
+
+function cleanModules(modules: string[], fallback: string[]): string[] {
+  const cleaned = modules
+    .map(cleanModuleLabel)
+    .filter((m) => m.length > 2 && m.length < 55);
+  const seen = new Set<string>();
+  const merged = [...cleaned, ...fallback].filter((m) => {
+    const key = m.toLowerCase();
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+  return merged.slice(0, 5);
+}
+
+function bestHelpUrl(
+  areaName: string,
+  focusKey: string,
+  factorialHits: TavilyHit[],
+  language: string,
+): string {
+  const keywords: Record<string, string[]> = {
+    recruitment: ["recruitment", "ats", "hiring", "candidate"],
+    onboarding: ["onboarding", "signature", "document"],
+    "time-tracking": ["time-tracking", "attendance", "clock", "timesheet"],
+    "time-off": ["time-off", "leave", "absence", "approval"],
+    documents: ["document", "file", "employee"],
+    communication: ["announcement", "payslip", "portal"],
+    trainings: ["training", "lms", "learning"],
+    performance: ["performance", "review"],
+    engagement: ["survey", "engagement", "one-on-one"],
+  };
+
+  const keys = keywords[focusKey] ?? [focusKey];
+  const match = factorialHits.find(
+    (h) =>
+      isFactorialUrl(h.url) &&
+      keys.some((k) => h.url.toLowerCase().includes(k) || h.title.toLowerCase().includes(k)),
+  );
+  if (match) return match.url;
+
+  const areaMatch = factorialHits.find(
+    (h) =>
+      isFactorialUrl(h.url) &&
+      h.title.toLowerCase().includes(areaName.toLowerCase().split(" ")[0] ?? ""),
+  );
+  if (areaMatch) return areaMatch.url;
+
+  return helpBase(language);
+}
+
+function buildDemoAreasFromFocus(
+  focusModules: string[],
+  aiAreas: DemoArea[],
+  factorialHits: TavilyHit[],
+  language: string,
+): DemoArea[] {
+  const aiByName = new Map(aiAreas.map((a) => [a.area.toLowerCase(), a]));
+
+  const areas: DemoArea[] = [];
+
+  for (const focusKey of focusModules) {
+    const canonical = CANONICAL_DEMO_AREAS[focusKey];
+    if (!canonical) continue;
+
+    const aiMatch =
+      [...aiByName.entries()].find(([name]) =>
+        name.includes(canonical.area.toLowerCase().split(" ")[0] ?? ""),
+      )?.[1] ?? null;
+
+    const modules = cleanModules(aiMatch?.modules ?? [], canonical.modules);
+    const helpUrl =
+      (aiMatch?.helpUrl && isFactorialUrl(aiMatch.helpUrl) ? aiMatch.helpUrl : undefined) ??
+      bestHelpUrl(canonical.area, focusKey, factorialHits, language);
+
+    areas.push({ area: canonical.area, modules, helpUrl });
+  }
+
+  return areas;
+}
+
+function defaultDiscoveryIds(focusModules: string[]): string[] {
+  const ids = focusModules
+    .map((m) => FOCUS_TO_DISCOVERY[m])
+    .filter((id, i, arr) => id && arr.indexOf(id) === i);
+  return ids.length > 0 ? ids.slice(0, 4) : ["recruitment", "attendance", "onboarding"];
+}
+
+function finalizePayload(
+  parsed: AIPrepPayload,
+  input: PrepInput,
+  clientHits: TavilyHit[],
+  factorialHits: TavilyHit[],
+): AIPrepPayload {
+  const focusDemoAreas = buildDemoAreasFromFocus(
+    input.focusModules,
+    parsed.focusDemoAreas,
+    factorialHits,
+    input.language,
+  );
+
+  const factorialSourceUrls = uniqueUrls([
+    ...factorialHits.map((h) => h.url).filter(isFactorialUrl),
+    ...(parsed.citedUrls ?? []).filter(isFactorialUrl),
+    ...focusDemoAreas.map((a) => a.helpUrl),
+  ]);
+
+  const clientSourceUrls = uniqueUrls([
+    ...clientHits.map((h) => h.url),
+    ...(parsed.citedUrls ?? []).filter((u) => !isFactorialUrl(u)),
+  ]);
+
+  const discoveryAreaIds =
+    parsed.discoveryAreaIds?.length ? parsed.discoveryAreaIds : defaultDiscoveryIds(input.focusModules);
+
+  return {
+    clientBullets: parsed.clientBullets,
+    closingScript: parsed.closingScript,
+    citedUrls: [...factorialSourceUrls, ...clientSourceUrls],
+    clientSourceUrls,
+    factorialSourceUrls,
+    focusDemoAreas,
+    discoveryAreaIds,
+    discoveryEmphasis: parsed.discoveryEmphasis,
+    scalingChallenge: parsed.scalingChallenge,
+  };
+}
+
 const SYSTEM_PROMPT = `You are the Factorial pre-demo preparation assistant for sales discovery calls.
 
 RULES:
 - clientBullets: 4-6 specific bullets from research notes + client web excerpts ONLY. Include scale, workforce type (field/site/office), industry context. No generic marketing fluff.
-- For Factorial modules: ONLY use feature names that appear verbatim in FACTORIAL DOCUMENTATION EXCERPTS.
-- citedUrls: every help.factorialhr.com URL from factorial excerpts used in focusDemoAreas.
+- For Factorial modules: short demo labels (2-5 words). Examples: "Mobile clock-in", "Leave calendar". NEVER copy article titles like "About the Recruitment functionality" or "How to create...".
+- citedUrls: only help.factorialhr.com URLs from factorial excerpts (not client web URLs).
 - discoveryEmphasis: 1-2 sentences per area id explaining WHY this area matters for THIS client (construction, distributed sites, etc.).
 - scalingChallenge: one sentence — the real people-ops challenge at scale for this client (not "HR administration" alone).
 - closingScript: 3-5 sentences, specific to client name and industry, referencing what you learned.
@@ -328,8 +536,8 @@ JSON schema:
   "scalingChallenge": "string"
 }
 
-focusDemoAreas: exactly match focusModules (2-5 areas). modules: 3-5 items each from docs only.
-discoveryAreaIds: 3-4 most relevant, ordered by priority.`;
+focusDemoAreas: one entry per focus module (2-5 max). modules: 3-4 short labels from docs only.
+discoveryAreaIds: pick 3-4 from recruitment|onboarding|attendance|leave|documents|communication — match client pains.`;
 
 async function generatePrep(
   input: PrepInput,
@@ -428,20 +636,7 @@ ${docContext || "No factorial docs found. Use generic area names only. citedUrls
     throw new Error("Invalid AI response structure");
   }
 
-  const clientUrls = clientHits.map((h) => h.url);
-  const factorialUrls = (parsed.citedUrls ?? []).length
-    ? (parsed.citedUrls ?? [])
-    : factorialHits.map((h) => h.url);
-
-  const ai: AIPrepPayload = {
-    clientBullets: parsed.clientBullets,
-    closingScript: parsed.closingScript,
-    citedUrls: [...new Set([...factorialUrls, ...clientUrls])],
-    focusDemoAreas: parsed.focusDemoAreas,
-    discoveryAreaIds: parsed.discoveryAreaIds,
-    discoveryEmphasis: parsed.discoveryEmphasis,
-    scalingChallenge: parsed.scalingChallenge,
-  };
+  const ai = finalizePayload(parsed, input, clientHits, factorialHits);
 
   return { ai, searchMeta };
 }
@@ -457,24 +652,48 @@ function buildPrepMarkdown(
     ai.scalingChallenge ??
     `scaling people operations across ${industry} sites while maintaining operational discipline`;
 
-  const discoverySections = DISCOVERY_AREAS.map((area) => {
+  const priorityIds =
+    ai.discoveryAreaIds?.length ? ai.discoveryAreaIds : defaultDiscoveryIds(input.focusModules);
+  const prioritySet = new Set(priorityIds);
+  const priorityAreas = DISCOVERY_AREAS.filter((a) => prioritySet.has(a.id));
+  const otherAreas = DISCOVERY_AREAS.filter((a) => !prioritySet.has(a.id));
+
+  const formatDiscoveryArea = (area: (typeof DISCOVERY_AREAS)[number]) => {
     const custom = emphasis[area.id];
     const questions = area.questions.map((q) => `  - ${q}`).join("\n");
     const openerText = "opener" in area && area.opener ? `\n> "${area.opener}"\n` : "";
     return `### ${area.title}\n${custom ? `**Why for ${clientName}:** ${custom}\n` : ""}${openerText}\n${questions}`;
-  }).join("\n\n");
+  };
+
+  const discoverySections = [
+    "_Focus on these areas first (15–20 min):_",
+    "",
+    ...priorityAreas.map(formatDiscoveryArea),
+    otherAreas.length > 0 ? "\n_Optional if time allows:_\n" : "",
+    ...otherAreas.map(formatDiscoveryArea),
+  ]
+    .filter(Boolean)
+    .join("\n\n");
 
   const demoTable = ai.focusDemoAreas
-    .map(
-      (mod) =>
-        `| ${mod.area} | ${mod.modules.join(", ")} | ${mod.helpUrl ?? "—"} |`,
-    )
+    .map((mod) => {
+      const help =
+        mod.helpUrl && isFactorialUrl(mod.helpUrl)
+          ? `[Help article](${mod.helpUrl})`
+          : "—";
+      return `| ${mod.area} | ${mod.modules.join(" · ")} | ${help} |`;
+    })
     .join("\n");
 
-  const sourcesBlock =
-    ai.citedUrls.length > 0
-      ? ai.citedUrls.map((u) => `- ${u}`).join("\n")
-      : "_No documentation URLs — add TAVILY_API_KEY on Vercel for Factorial help search._";
+  const factorialSourcesBlock =
+    ai.factorialSourceUrls.length > 0
+      ? ai.factorialSourceUrls.map((u) => `- ${u}`).join("\n")
+      : "_No Factorial help articles found — verify TAVILY_API_KEY._";
+
+  const clientSourcesBlock =
+    ai.clientSourceUrls.length > 0
+      ? ai.clientSourceUrls.map((u) => `- ${u}`).join("\n")
+      : "_No client web sources — rely on your research notes._";
 
   return `# ${clientName} — Pre-Demo Preparation
 
@@ -578,9 +797,13 @@ ${ai.closingScript}
 
 ## Sources
 
-${sourcesBlock}
+### Factorial documentation
+${factorialSourcesBlock}
 
-_Tavily: ${searchMeta.tavilyEnabled ? "enabled" : "NOT configured"} · Client sources: ${searchMeta.clientSourceCount} · Factorial sources: ${searchMeta.factorialSourceCount} · Model: ${searchMeta.model}_
+### Client research (web)
+${clientSourcesBlock}
+
+_Tavily: ${searchMeta.tavilyEnabled ? "enabled" : "NOT configured"} · Factorial URLs: ${ai.factorialSourceUrls.length} · Client URLs: ${ai.clientSourceUrls.length} · Model: ${searchMeta.model}_
 
 _Prepared by Victor Gutierrez · victor.gutierrez@factorial.co_
 `;
@@ -810,6 +1033,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       guideSteps,
       prepMarkdown,
       citedUrls: ai.citedUrls,
+      clientSourceUrls: ai.clientSourceUrls,
+      factorialSourceUrls: ai.factorialSourceUrls,
       meta: searchMeta,
     });
   } catch (error) {

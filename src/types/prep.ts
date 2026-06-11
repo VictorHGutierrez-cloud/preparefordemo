@@ -39,5 +39,7 @@ export interface PrepareApiResponse {
   guideSteps: GuideStep[];
   prepMarkdown: string;
   citedUrls: string[];
+  clientSourceUrls?: string[];
+  factorialSourceUrls?: string[];
   meta?: PrepMeta;
 }
