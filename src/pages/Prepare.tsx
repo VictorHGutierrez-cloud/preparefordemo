@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { ArrowLeft, Download, Loader2, Sparkles } from "lucide-react";
+import { ArrowLeft, Download, FileDown, Loader2, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,7 +13,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { callPrepareApi } from "@/lib/prepApi";
-import { downloadPrepMarkdown, savePrepSession } from "@/lib/prepSession";
+import { downloadPrepMarkdown, loadPrepSession, savePrepSession } from "@/lib/prepSession";
+import { usePrepPdfDownload } from "@/hooks/usePrepPdfDownload";
 import type { PrepareFormData } from "@/types/prep";
 import { useToast } from "@/hooks/use-toast";
 
@@ -32,6 +33,7 @@ const FOCUS_MODULES = [
 const Prepare = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { downloadPdf, pdfLoading } = usePrepPdfDownload();
   const [loading, setLoading] = useState(false);
   const [lastMarkdown, setLastMarkdown] = useState<string | null>(null);
   const [lastClientName, setLastClientName] = useState("");
@@ -179,7 +181,7 @@ const Prepare = () => {
               <Label htmlFor="employeeCount">Employees</Label>
               <Input
                 id="employeeCount"
-                placeholder="e.g. 500+"
+                placeholder="e.g. 120 — or leave blank to let AI search"
                 value={form.employeeCount}
                 onChange={(e) => setForm({ ...form, employeeCount: e.target.value })}
               />
@@ -189,10 +191,15 @@ const Prepare = () => {
               <Label htmlFor="industry">Industry</Label>
               <Input
                 id="industry"
-                placeholder="e.g. Retail / Asset financing"
+                placeholder="e.g. Commercial construction / Interior fit-outs"
                 value={form.industry}
                 onChange={(e) => setForm({ ...form, industry: e.target.value })}
               />
+              {!form.industry.trim() && (
+                <p className="text-xs text-muted-foreground">
+                  If empty, AI will try to find from web — always confirm on call.
+                </p>
+              )}
             </div>
 
             <div className="flex flex-col gap-2 sm:col-span-2">
@@ -233,14 +240,15 @@ const Prepare = () => {
             <Label htmlFor="researchNotes">Research notes *</Label>
             <Textarea
               id="researchNotes"
-              placeholder="Paste SDR notes, LinkedIn, company website, market research, or call transcript..."
+              placeholder="Include: location, portfolio/projects, workforce type (office vs field), headcount if known, SDR notes, LinkedIn, website..."
               rows={10}
               value={form.researchNotes}
               onChange={(e) => setForm({ ...form, researchNotes: e.target.value })}
               required
             />
             <p className="text-xs text-muted-foreground">
-              Minimum 20 characters. Only facts from here will be used about the client.
+              Minimum 20 characters. Portfolio and location help the icebreaker. Only facts from here
+              will be used about the client.
             </p>
           </div>
 
@@ -262,16 +270,33 @@ const Prepare = () => {
         {lastMarkdown && (
           <div className="mt-6 rounded-xl border border-border bg-background p-4">
             <p className="text-sm text-muted-foreground mb-2">Last preparation saved in browser.</p>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="gap-2"
-              onClick={() => downloadPrepMarkdown(lastMarkdown, lastClientName)}
-            >
-              <Download className="h-4 w-4" />
-              Download prep.md
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="gap-2"
+                onClick={() => downloadPrepMarkdown(lastMarkdown, lastClientName)}
+              >
+                <Download className="h-4 w-4" />
+                Download prep.md
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="gap-2"
+                disabled={pdfLoading}
+                onClick={() => downloadPdf(loadPrepSession())}
+              >
+                {pdfLoading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <FileDown className="h-4 w-4" />
+                )}
+                {pdfLoading ? "Generating PDF…" : "Download PDF"}
+              </Button>
+            </div>
           </div>
         )}
       </div>

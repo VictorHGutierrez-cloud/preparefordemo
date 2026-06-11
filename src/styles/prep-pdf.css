@@ -1,0 +1,109 @@
+.prep-pdf-root {
+  width: 210mm;
+  padding: 16mm 18mm;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-size: 11pt;
+  line-height: 1.5;
+  color: #1a1a1a;
+  background: #fff;
+}
+
+.prep-pdf-root h1 {
+  font-size: 22pt;
+  font-weight: 700;
+  color: #c41e3a;
+  margin: 0 0 4pt;
+}
+
+.prep-pdf-root h2 {
+  font-size: 14pt;
+  font-weight: 700;
+  color: #c41e3a;
+  margin: 18pt 0 8pt;
+  padding-bottom: 4pt;
+  border-bottom: 1px solid #e8e8e8;
+  page-break-after: avoid;
+}
+
+.prep-pdf-root h3 {
+  font-size: 12pt;
+  font-weight: 600;
+  margin: 12pt 0 6pt;
+  page-break-after: avoid;
+}
+
+.prep-pdf-root .prep-pdf-meta {
+  font-size: 10pt;
+  color: #555;
+  margin-bottom: 16pt;
+}
+
+.prep-pdf-root ul {
+  margin: 6pt 0;
+  padding-left: 18pt;
+}
+
+.prep-pdf-root li {
+  margin-bottom: 4pt;
+}
+
+.prep-pdf-root .prep-pdf-block {
+  margin-bottom: 12pt;
+  page-break-inside: avoid;
+}
+
+.prep-pdf-root .prep-pdf-quote {
+  border-left: 3pt solid #c41e3a;
+  padding: 8pt 12pt;
+  margin: 8pt 0;
+  background: #fdf6f7;
+  font-style: italic;
+  page-break-inside: avoid;
+}
+
+.prep-pdf-root .prep-pdf-label {
+  font-size: 9pt;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #c41e3a;
+  margin-bottom: 4pt;
+}
+
+.prep-pdf-root table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 8pt 0;
+  font-size: 10pt;
+}
+
+.prep-pdf-root th,
+.prep-pdf-root td {
+  border: 1px solid #ddd;
+  padding: 6pt 8pt;
+  text-align: left;
+}
+
+.prep-pdf-root th {
+  background: #f5f5f5;
+  font-weight: 600;
+}
+
+.prep-pdf-root .prep-pdf-footer {
+  margin-top: 20pt;
+  padding-top: 10pt;
+  border-top: 1px solid #ddd;
+  font-size: 9pt;
+  color: #777;
+}
+
+.prep-pdf-root a {
+  color: #c41e3a;
+  word-break: break-all;
+}
+
+.prep-pdf-root .prep-pdf-pain {
+  font-size: 10pt;
+  color: #444;
+  margin-bottom: 6pt;
+}

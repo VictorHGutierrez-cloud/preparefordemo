@@ -53,11 +53,89 @@ export function DemoGuideStepPanel({ step, clientName }: DemoGuideStepPanelProps
         </ul>
       )}
 
+      {step.icebreaker && step.kind === "agenda" && (
+        <div className="flex flex-col gap-4">
+          <p className="text-xs font-bold uppercase tracking-wider text-primary">Warm greeting &amp; rapport</p>
+          <blockquote className="rounded-xl border border-border bg-muted/30 p-4 text-sm italic leading-relaxed text-foreground/90">
+            {replaceClient(step.icebreaker.greeting, clientName)}
+          </blockquote>
+          <blockquote className="rounded-xl border border-border bg-muted/30 p-4 text-sm italic leading-relaxed text-foreground/90">
+            {replaceClient(step.icebreaker.rapport, clientName)}
+          </blockquote>
+        </div>
+      )}
+
+      {step.businessProfile && step.kind === "clientContext" && (
+        <div className="rounded-xl border border-primary/20 bg-primary/[0.04] p-5">
+          <p className="text-xs font-bold uppercase tracking-wider text-primary">Business profile &amp; angle</p>
+          <ul className="mt-3 flex flex-col gap-2 text-sm leading-relaxed text-foreground/90">
+            <li>
+              <span className="font-semibold">Industry:</span> {step.businessProfile.industryDetail}
+            </li>
+            <li>
+              <span className="font-semibold">Location:</span> {step.businessProfile.location}
+            </li>
+            <li>
+              <span className="font-semibold">Workforce:</span> {step.businessProfile.workforceType}
+            </li>
+            <li>
+              <span className="font-semibold">Core pain:</span> {step.businessProfile.corePainPoint}
+            </li>
+            <li>
+              <span className="font-semibold">Factorial angle:</span> {step.businessProfile.factorialValueProp}
+            </li>
+          </ul>
+          {step.employeeCountNote && (
+            <p className="mt-3 text-sm text-muted-foreground">
+              <span className="font-semibold text-foreground">Employees:</span> {step.employeeCountNote}
+            </p>
+          )}
+        </div>
+      )}
+
       {step.validationQuestion && step.kind !== "executiveSummary" && (
         <ValidationCard question={replaceClient(step.validationQuestion, clientName)} />
       )}
 
-      {step.kind === "discovery" && step.discoveryAreas && (
+      {step.kind === "discovery" && step.discoveryBlocks && step.discoveryBlocks.length > 0 && (
+        <div className="flex flex-col gap-6">
+          {step.discoveryBlocks.map((block) => (
+            <div key={block.id} className="rounded-xl border border-border bg-background p-5">
+              <h3 className="text-lg font-semibold text-foreground">{block.title}</h3>
+              <p className="mt-2 text-sm text-muted-foreground">{block.painContext}</p>
+              <ul className="mt-4 flex flex-col gap-2">
+                {block.questions.map((q, qi) => {
+                  const id = `${block.id}-${qi}`;
+                  const checked = isChecked(id);
+                  return (
+                    <li key={id}>
+                      <button
+                        type="button"
+                        onClick={() => toggle(id)}
+                        className={cn(
+                          "flex w-full items-start gap-3 rounded-lg border p-3 text-left text-sm transition-colors",
+                          checked
+                            ? "border-primary/40 bg-primary/5 text-foreground"
+                            : "border-transparent bg-muted/30 text-foreground/80 hover:bg-muted/50",
+                        )}
+                      >
+                        {checked ? (
+                          <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                        ) : (
+                          <Circle className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+                        )}
+                        {replaceClient(q, clientName)}
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {step.kind === "discovery" && step.discoveryAreas && !step.discoveryBlocks?.length && (
         <div className="flex flex-col gap-6">
           {step.discoveryAreas.map((area) => (
             <div key={area.id} className="rounded-xl border border-border bg-background p-5">
@@ -117,6 +195,15 @@ export function DemoGuideStepPanel({ step, clientName }: DemoGuideStepPanelProps
         <div className="grid gap-4 sm:grid-cols-2">
           <BeforeAfterList variant="before" items={step.beforeItems ?? []} />
           <BeforeAfterList variant="after" items={step.afterItems ?? []} />
+        </div>
+      )}
+
+      {step.kind === "factorialDemo" && step.demoTransition && (
+        <div className="rounded-xl border-l-4 border-primary bg-primary/[0.06] p-5">
+          <p className="text-xs font-bold uppercase tracking-wider text-primary">Transition to demo</p>
+          <p className="mt-2 text-base leading-relaxed text-foreground/90">
+            {replaceClient(step.demoTransition, clientName)}
+          </p>
         </div>
       )}
 

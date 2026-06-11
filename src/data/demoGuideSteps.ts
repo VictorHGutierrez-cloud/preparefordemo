@@ -24,6 +24,27 @@ export interface DemoModule {
   helpUrl?: string;
 }
 
+export interface BusinessProfile {
+  industryDetail: string;
+  location: string;
+  workforceType: string;
+  corePainPoint: string;
+  factorialValueProp: string;
+}
+
+export interface Icebreaker {
+  greeting: string;
+  rapport: string;
+  framing?: string;
+}
+
+export interface DiscoveryBlock {
+  id: string;
+  title: string;
+  painContext: string;
+  questions: string[];
+}
+
 export type GuideStepKind =
   | "agenda"
   | "clientContext"
@@ -51,6 +72,11 @@ export interface GuideStep {
   outcomes?: string[];
   questions?: string[];
   closingScript?: string;
+  businessProfile?: BusinessProfile;
+  employeeCountNote?: string;
+  icebreaker?: Icebreaker;
+  discoveryBlocks?: DiscoveryBlock[];
+  demoTransition?: string;
 }
 
 export const DISCOVERY_AREAS: DiscoveryArea[] = [

@@ -22,6 +22,34 @@ interface DemoArea {
   helpUrl?: string;
 }
 
+interface BusinessProfile {
+  industryDetail: string;
+  location: string;
+  workforceType: string;
+  corePainPoint: string;
+  factorialValueProp: string;
+}
+
+interface EmployeeCountResearch {
+  userProvided: string;
+  foundInResearch: string | null;
+  source: string | null;
+  displayNote: string;
+}
+
+interface Icebreaker {
+  greeting: string;
+  rapport: string;
+  framing: string;
+}
+
+interface DiscoveryBlock {
+  id: string;
+  title: string;
+  painContext: string;
+  questions: string[];
+}
+
 interface AIPrepPayload {
   clientBullets: string[];
   closingScript: string;
@@ -32,6 +60,11 @@ interface AIPrepPayload {
   discoveryAreaIds?: string[];
   discoveryEmphasis?: Record<string, string>;
   scalingChallenge?: string;
+  businessProfile: BusinessProfile;
+  employeeCountResearch: EmployeeCountResearch;
+  icebreaker: Icebreaker;
+  discoveryBlocks: DiscoveryBlock[];
+  demoTransition: string;
 }
 
 interface TavilyHit {
@@ -83,6 +116,11 @@ interface GuideStep {
   outcomes?: string[];
   questions?: string[];
   closingScript?: string;
+  businessProfile?: BusinessProfile;
+  employeeCountNote?: string;
+  icebreaker?: Icebreaker;
+  discoveryBlocks?: DiscoveryBlock[];
+  demoTransition?: string;
 }
 
 const DISCOVERY_AREAS = [
@@ -274,12 +312,38 @@ function factorialDomains(language: string): string[] {
   return [`help.factorialhr.com/${lang}`, "help.factorialhr.com"];
 }
 
-async function searchClientWeb(
+function mergeTavilyHits(...groups: TavilyHit[][]): TavilyHit[] {
+  const seen = new Set<string>();
+  const merged: TavilyHit[] = [];
+  for (const group of groups) {
+    for (const hit of group) {
+      if (!seen.has(hit.url)) {
+        seen.add(hit.url);
+        merged.push(hit);
+      }
+    }
+  }
+  return merged;
+}
+
+async function searchClientProfile(
   clientName: string,
   industry: string,
 ): Promise<TavilyHit[]> {
-  const query = `${clientName} ${industry} company employees HR workforce operations`;
-  return tavilySearch(query, { maxResults: 5 });
+  const industryPart = industry !== "Not specified" ? industry : "";
+  const query = `${clientName} ${industryPart} company about industry location business model workforce`;
+  return tavilySearch(query, { maxResults: 4 });
+}
+
+async function searchClientPortfolio(clientName: string, industry: string): Promise<TavilyHit[]> {
+  const industryPart = industry !== "Not specified" ? industry : "";
+  const query = `${clientName} ${industryPart} portfolio projects clients case studies craftsmanship`;
+  return tavilySearch(query, { maxResults: 4 });
+}
+
+async function searchClientScale(clientName: string): Promise<TavilyHit[]> {
+  const query = `${clientName} employees team size headcount LinkedIn workforce`;
+  return tavilySearch(query, { maxResults: 4 });
 }
 
 async function searchFactorialDocs(
@@ -471,73 +535,177 @@ function defaultDiscoveryIds(focusModules: string[]): string[] {
   return ids.length > 0 ? ids.slice(0, 4) : ["recruitment", "attendance", "onboarding"];
 }
 
+function fallbackDiscoveryBlocks(input: PrepInput): DiscoveryBlock[] {
+  const ids = defaultDiscoveryIds(input.focusModules);
+  return DISCOVERY_AREAS.filter((a) => ids.includes(a.id)).map((area, i) => ({
+    id: area.id,
+    title: `Block ${String.fromCharCode(65 + i)}: ${area.title}`,
+    painContext:
+      `Understanding ${area.title.toLowerCase()} is critical for ${input.clientName} in ${input.industry}.`,
+    questions: [...area.questions].slice(0, 4),
+  }));
+}
+
+function normalizeAiPayload(parsed: Partial<AIPrepPayload>, input: PrepInput): AIPrepPayload {
+  const userProvided =
+    input.employeeCount !== "Not specified" ? input.employeeCount : "Not provided";
+
+  const businessProfile: BusinessProfile = parsed.businessProfile ?? {
+    industryDetail: input.industry,
+    location: "Confirm on call",
+    workforceType: "Confirm workforce mix on call",
+    corePainPoint:
+      parsed.scalingChallenge ??
+      `Scaling people operations across ${input.industry} while maintaining operational discipline`,
+    factorialValueProp:
+      "Streamline HR operations, workforce visibility, and compliance in one platform",
+  };
+
+  const employeeCountResearch: EmployeeCountResearch = parsed.employeeCountResearch ?? {
+    userProvided,
+    foundInResearch: null,
+    source: null,
+    displayNote:
+      userProvided !== "Not provided"
+        ? `${userProvided} (you entered) — confirm on call`
+        : "Headcount not confirmed — ask on call",
+  };
+
+  const icebreaker: Icebreaker = parsed.icebreaker ?? {
+    greeting: `Hi [Lead's Name], great to connect with you today!`,
+    rapport: `I spent some time researching ${input.clientName} before our call — looking forward to learning more about your operations.`,
+    framing: `In ${input.industry}, your people are both your biggest asset and your biggest variable cost. The goal today is to understand how your HR and Operations teams manage the workforce daily, and see if Factorial can help. Shall we dive into a few quick questions?`,
+  };
+
+  const discoveryBlocks =
+    parsed.discoveryBlocks && parsed.discoveryBlocks.length >= 2
+      ? parsed.discoveryBlocks
+      : fallbackDiscoveryBlocks(input);
+
+  return {
+    clientBullets: parsed.clientBullets ?? [],
+    closingScript: parsed.closingScript ?? "",
+    citedUrls: parsed.citedUrls ?? [],
+    clientSourceUrls: [],
+    factorialSourceUrls: [],
+    focusDemoAreas: parsed.focusDemoAreas ?? [],
+    discoveryAreaIds: parsed.discoveryAreaIds,
+    discoveryEmphasis: parsed.discoveryEmphasis,
+    scalingChallenge: parsed.scalingChallenge,
+    businessProfile,
+    employeeCountResearch,
+    icebreaker,
+    discoveryBlocks,
+    demoTransition:
+      parsed.demoTransition ??
+      `What I want to show you in Factorial is how we bridge the gap between office planning and field execution — mobile clock-in with GPS, project-based time tracking, and centralized compliance documents. Let's jump into the platform.`,
+  };
+}
+
+function formatClientEmployeeCount(research: EmployeeCountResearch): string {
+  if (research.foundInResearch) {
+    const src = research.source ? ` (${research.source})` : "";
+    return `${research.foundInResearch}${src} — confirm on call`;
+  }
+  if (research.userProvided && research.userProvided !== "Not provided") {
+    return `${research.userProvided} (you entered) — confirm on call`;
+  }
+  return "Confirm on call";
+}
+
 function finalizePayload(
-  parsed: AIPrepPayload,
+  parsed: Partial<AIPrepPayload>,
   input: PrepInput,
   clientHits: TavilyHit[],
   factorialHits: TavilyHit[],
 ): AIPrepPayload {
+  const normalized = normalizeAiPayload(parsed, input);
   const focusDemoAreas = buildDemoAreasFromFocus(
     input.focusModules,
-    parsed.focusDemoAreas,
+    normalized.focusDemoAreas,
     factorialHits,
     input.language,
   );
 
   const factorialSourceUrls = uniqueUrls([
     ...factorialHits.map((h) => h.url).filter(isFactorialUrl),
-    ...(parsed.citedUrls ?? []).filter(isFactorialUrl),
+    ...(normalized.citedUrls ?? []).filter(isFactorialUrl),
     ...focusDemoAreas.map((a) => a.helpUrl),
   ]);
 
   const clientSourceUrls = uniqueUrls([
     ...clientHits.map((h) => h.url),
-    ...(parsed.citedUrls ?? []).filter((u) => !isFactorialUrl(u)),
+    ...(normalized.citedUrls ?? []).filter((u) => !isFactorialUrl(u)),
   ]);
 
   const discoveryAreaIds =
-    parsed.discoveryAreaIds?.length ? parsed.discoveryAreaIds : defaultDiscoveryIds(input.focusModules);
+    normalized.discoveryAreaIds?.length
+      ? normalized.discoveryAreaIds
+      : defaultDiscoveryIds(input.focusModules);
 
   return {
-    clientBullets: parsed.clientBullets,
-    closingScript: parsed.closingScript,
+    ...normalized,
     citedUrls: [...factorialSourceUrls, ...clientSourceUrls],
     clientSourceUrls,
     factorialSourceUrls,
     focusDemoAreas,
     discoveryAreaIds,
-    discoveryEmphasis: parsed.discoveryEmphasis,
-    scalingChallenge: parsed.scalingChallenge,
   };
 }
 
 const SYSTEM_PROMPT = `You are the Factorial pre-demo preparation assistant for sales discovery calls.
 
+QUALITY BAR (match this depth for construction, fit-out, retail, logistics, etc.):
+- businessProfile: specific industry sub-segment, city/country if known, dual workforce (office vs field/site), ONE core pain tied to project margins or growth, Factorial angle tied to focus modules.
+- icebreaker: warm greeting + compliment referencing REAL portfolio/projects ONLY if in research notes or web excerpts; otherwise honest generic opener. framing: people as asset + goal of today's chat.
+- discoveryBlocks: 3-4 blocks named "Block A: ..." aligned to focus modules and industry. Each block: painContext (why this matters in THEIR sector) + 2-4 discovery questions in commercial language. Mark the hardest question with prefix "(Pressing the pain)".
+- demoTransition: bridge from their manual/paper pain to Factorial demo (GPS clock-in, project tagging, document compliance — only what docs support).
+- NEVER use empty phrases like "leverage Factorial's solutions".
+
 RULES:
-- clientBullets: 4-6 specific bullets from research notes + client web excerpts ONLY. Include scale, workforce type (field/site/office), industry context. No generic marketing fluff.
-- For Factorial modules: short demo labels (2-5 words). Examples: "Mobile clock-in", "Leave calendar". NEVER copy article titles like "About the Recruitment functionality" or "How to create...".
-- citedUrls: only help.factorialhr.com URLs from factorial excerpts (not client web URLs).
-- discoveryEmphasis: 1-2 sentences per area id explaining WHY this area matters for THIS client (construction, distributed sites, etc.).
-- scalingChallenge: one sentence — the real people-ops challenge at scale for this client (not "HR administration" alone).
-- closingScript: 3-5 sentences, specific to client name and industry, referencing what you learned.
+- clientBullets: 4-6 specific bullets from research notes + client web excerpts ONLY. Include workforce type, sites/projects, industry context.
+- employeeCountResearch: NEVER invent headcount. foundInResearch only if explicitly in notes/web; else null. displayNote always says to confirm on call if uncertain.
+- For Factorial modules: short demo labels (2-5 words). NEVER copy article titles.
+- citedUrls: only help.factorialhr.com URLs from factorial excerpts.
+- closingScript: 3-5 sentences, specific to client name and industry.
 - Respond in the user's language.
 - Output valid JSON only.
 
 JSON schema:
 {
+  "businessProfile": {
+    "industryDetail": "string",
+    "location": "string",
+    "workforceType": "string",
+    "corePainPoint": "string",
+    "factorialValueProp": "string"
+  },
+  "employeeCountResearch": {
+    "userProvided": "string",
+    "foundInResearch": "string or null",
+    "source": "string or null",
+    "displayNote": "string"
+  },
+  "icebreaker": {
+    "greeting": "Hi [Lead's Name], ...",
+    "rapport": "portfolio compliment or honest opener",
+    "framing": "people as asset + today's goal"
+  },
+  "discoveryBlocks": [
+    { "id": "block-a", "title": "Block A: Project-Based Time Tracking", "painContext": "...", "questions": ["...", "(Pressing the pain) ..."] }
+  ],
+  "demoTransition": "string",
   "clientBullets": ["string"],
   "closingScript": "string",
   "citedUrls": ["url"],
   "focusDemoAreas": [
-    { "area": "Recruitment|Onboarding|Time & Attendance|Leave Management|Document Management|Internal Communication", "modules": ["exact feature names from docs"], "helpUrl": "specific help article url if available" }
+    { "area": "Recruitment|Onboarding|Time & Attendance|Leave Management|Document Management|Internal Communication", "modules": ["short labels"], "helpUrl": "url" }
   ],
   "discoveryAreaIds": ["recruitment|onboarding|attendance|leave|documents|communication"],
-  "discoveryEmphasis": { "recruitment": "why it matters for this client", "attendance": "..." },
   "scalingChallenge": "string"
 }
 
-focusDemoAreas: one entry per focus module (2-5 max). modules: 3-4 short labels from docs only.
-discoveryAreaIds: pick 3-4 from recruitment|onboarding|attendance|leave|documents|communication — match client pains.`;
+focusDemoAreas: one entry per focus module. discoveryBlocks: 3-4 blocks matching focusModules and industry pains.`;
 
 async function generatePrep(
   input: PrepInput,
@@ -567,13 +735,18 @@ async function generatePrep(
     .map((m) => MODULE_SEARCH_TERMS[m] ?? m)
     .slice(0, 4);
 
-  const [clientHits, ...factorialHitGroups] = await Promise.all([
-    searchClientWeb(input.clientName, input.industry),
+  const [profileHits, portfolioHits, scaleHits, ...factorialHitGroups] = await Promise.all([
+    searchClientProfile(input.clientName, input.industry),
+    searchClientPortfolio(input.clientName, input.industry),
+    searchClientScale(input.clientName),
     ...factorialQueries.map((q) => searchFactorialDocs(q, input.language)),
   ]);
 
+  const clientHits = mergeTavilyHits(profileHits, portfolioHits, scaleHits);
   const factorialHits = factorialHitGroups.flat();
-  const clientContext = formatExcerpts(clientHits);
+  const profileContext = formatExcerpts(profileHits);
+  const portfolioContext = formatExcerpts(portfolioHits);
+  const scaleContext = formatExcerpts(scaleHits);
   const docContext = formatExcerpts(factorialHits);
 
   const searchMeta: SearchMeta = {
@@ -583,20 +756,29 @@ async function generatePrep(
     model,
   };
 
+  const userProvidedEmployees =
+    input.employeeCount !== "Not specified" ? input.employeeCount : "Not provided";
+
   const userMessage = `LANGUAGE: ${input.language}
 
 CLIENT:
 - Name: ${input.clientName}
 - Industry: ${input.industry}
-- Employees: ${input.employeeCount}
+- Employees (user entered): ${userProvidedEmployees}
 - Demo goal: ${input.demoGoal}
 - Focus modules: ${input.focusModules.join(", ")}
 
-RESEARCH NOTES (primary source for client facts):
+RESEARCH NOTES (primary source for client facts — do not contradict):
 ${researchNotes.slice(0, 8000)}
 
-CLIENT WEB RESEARCH (secondary — verify against notes, do not contradict notes):
-${clientContext || "No web results. Use research notes only for client facts."}
+CLIENT PROFILE RESEARCH (industry, location, business model):
+${profileContext || "No profile results. Use research notes only."}
+
+CLIENT PORTFOLIO / PROJECTS (for icebreaker rapport — only cite if found here or in notes):
+${portfolioContext || "No portfolio results. Use honest generic icebreaker."}
+
+CLIENT SCALE / HEADCOUNT (extract employee count only if explicitly stated):
+${scaleContext || "No headcount found. Set foundInResearch to null."}
 
 FACTORIAL DOCUMENTATION EXCERPTS (only source for product/module names):
 ${docContext || "No factorial docs found. Use generic area names only. citedUrls must be empty."}`;
@@ -610,6 +792,7 @@ ${docContext || "No factorial docs found. Use generic area names only. citedUrls
     body: JSON.stringify({
       model,
       temperature: 0.3,
+      max_tokens: 4096,
       response_format: { type: "json_object" },
       messages: [
         { role: "system", content: SYSTEM_PROMPT },
@@ -630,7 +813,7 @@ ${docContext || "No factorial docs found. Use generic area names only. citedUrls
   const content = data.choices?.[0]?.message?.content;
   if (!content) throw new Error("Empty response from OpenAI");
 
-  const parsed = JSON.parse(content) as AIPrepPayload;
+  const parsed = JSON.parse(content) as Partial<AIPrepPayload>;
 
   if (!parsed.clientBullets?.length || !parsed.closingScript || !parsed.focusDemoAreas?.length) {
     throw new Error("Invalid AI response structure");
@@ -646,33 +829,17 @@ function buildPrepMarkdown(
   ai: AIPrepPayload,
   searchMeta: SearchMeta,
 ): string {
-  const { clientName, industry, employeeCount, demoGoal } = input;
-  const emphasis = ai.discoveryEmphasis ?? {};
+  const { clientName, industry, demoGoal } = input;
   const scaling =
     ai.scalingChallenge ??
     `scaling people operations across ${industry} sites while maintaining operational discipline`;
 
-  const priorityIds =
-    ai.discoveryAreaIds?.length ? ai.discoveryAreaIds : defaultDiscoveryIds(input.focusModules);
-  const prioritySet = new Set(priorityIds);
-  const priorityAreas = DISCOVERY_AREAS.filter((a) => prioritySet.has(a.id));
-  const otherAreas = DISCOVERY_AREAS.filter((a) => !prioritySet.has(a.id));
-
-  const formatDiscoveryArea = (area: (typeof DISCOVERY_AREAS)[number]) => {
-    const custom = emphasis[area.id];
-    const questions = area.questions.map((q) => `  - ${q}`).join("\n");
-    const openerText = "opener" in area && area.opener ? `\n> "${area.opener}"\n` : "";
-    return `### ${area.title}\n${custom ? `**Why for ${clientName}:** ${custom}\n` : ""}${openerText}\n${questions}`;
-  };
-
-  const discoverySections = [
-    "_Focus on these areas first (15–20 min):_",
-    "",
-    ...priorityAreas.map(formatDiscoveryArea),
-    otherAreas.length > 0 ? "\n_Optional if time allows:_\n" : "",
-    ...otherAreas.map(formatDiscoveryArea),
-  ]
-    .filter(Boolean)
+  const bp = ai.businessProfile;
+  const discoverySections = ai.discoveryBlocks
+    .map((block) => {
+      const questions = block.questions.map((q) => `  - ${q}`).join("\n");
+      return `### ${block.title}\n\n${block.painContext}\n\n${questions}`;
+    })
     .join("\n\n");
 
   const demoTable = ai.focusDemoAreas
@@ -710,23 +877,47 @@ _Demo goal: ${demoGoal}_
 
 ---
 
-## 2. What We Learned About ${clientName} (2 min)
+## 2. Business Profile & Angle
 
-First, let me confirm that I understood your business correctly.
+**Industry:** ${bp.industryDetail}
+
+**Location:** ${bp.location}
+
+**Workforce:** ${bp.workforceType}
+
+**Core pain:** ${bp.corePainPoint}
+
+**Factorial angle:** ${bp.factorialValueProp}
+
+**Employees:** ${ai.employeeCountResearch.displayNote}
+
+---
+
+## 2b. Warm Greeting & Rapport
+
+> ${ai.icebreaker.greeting}
+
+> ${ai.icebreaker.rapport}
+
+> ${ai.icebreaker.framing}
+
+---
+
+## 2c. What We Learned About ${clientName} (2 min)
 
 ### ${clientName} Today
 
 ${ai.clientBullets.map((b) => `- ${b}`).join("\n")}
 
-### What Makes ${clientName} Unique
+### Scaling challenge
 
-${employeeCount} employees in ${industry}. ${scaling}
+${scaling}
 
 **Question:** "Would you say this accurately reflects your operation today?"
 
 ---
 
-## 3. Discovery Section (15–20 min)
+## 3. Deep Discovery (15–20 min)
 
 This becomes a conversation, not a presentation.
 
@@ -755,6 +946,12 @@ Imagine a Site Manager / Branch Manager
 **They can:** Approve leave · Review schedules · Track attendance · Access employee records · Manage onboarding
 
 From one platform.
+
+---
+
+## 5b. Transition to Demo
+
+${ai.demoTransition}
 
 ---
 
@@ -818,13 +1015,9 @@ function replaceClient(text: string, name: string): string {
 }
 
 function buildGuide(input: PrepInput, ai: AIPrepPayload) {
-  const { clientName, language, industry, employeeCount, demoGoal, focusModules } = input;
+  const { clientName, language, demoGoal, focusModules } = input;
   const helpUrl = helpBase(language);
-
-  const discoveryAreas =
-    ai.discoveryAreaIds && ai.discoveryAreaIds.length > 0
-      ? DISCOVERY_AREAS.filter((a) => ai.discoveryAreaIds!.includes(a.id))
-      : [...DISCOVERY_AREAS];
+  const employeeDisplay = formatClientEmployeeCount(ai.employeeCountResearch);
 
   const demoModules = ai.focusDemoAreas.map((mod) => ({
     area: mod.area,
@@ -846,17 +1039,21 @@ function buildGuide(input: PrepInput, ai: AIPrepPayload) {
         "Validate the main challenges impacting growth",
         "Show how similar organizations solve these challenges",
         replaceClient(`Explore whether Factorial could support ${clientName}'s next stage of growth`, clientName),
+        ...(ai.icebreaker.framing ? [ai.icebreaker.framing] : []),
       ],
+      icebreaker: ai.icebreaker,
     },
     {
       id: "client-context",
       index: 2,
       kind: "clientContext",
       title: "What We Learned",
-      subtitle: `${clientName} today — confirm your understanding`,
+      subtitle: `${clientName} today — ${employeeDisplay}`,
       duration: "2 min",
       bullets: ai.clientBullets,
       validationQuestion: "Would you say this accurately reflects your operation today?",
+      businessProfile: ai.businessProfile,
+      employeeCountNote: ai.employeeCountResearch.displayNote,
     },
     {
       id: "discovery",
@@ -865,7 +1062,7 @@ function buildGuide(input: PrepInput, ai: AIPrepPayload) {
       title: "Discovery",
       subtitle: "A conversation, not a presentation",
       duration: "15–20 min",
-      discoveryAreas,
+      discoveryBlocks: ai.discoveryBlocks,
     },
     {
       id: "executive-summary",
@@ -901,6 +1098,7 @@ function buildGuide(input: PrepInput, ai: AIPrepPayload) {
       kind: "factorialDemo",
       title: "Factorial Demo",
       subtitle: "Only show what solves their pain",
+      demoTransition: ai.demoTransition,
       demoModules,
     },
     {
@@ -944,8 +1142,8 @@ function buildGuide(input: PrepInput, ai: AIPrepPayload) {
 
   const client: ClientProfile = {
     empresa: clientName,
-    industry,
-    employeeCount,
+    industry: ai.businessProfile.industryDetail || input.industry,
+    employeeCount: employeeDisplay,
     demoGoal,
     focusModules,
   };
