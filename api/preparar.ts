@@ -19,10 +19,24 @@ interface PrepInput {
 interface AIPrepPayload {
   clientBullets: string[];
   closingScript: string;
-  prepMarkdown: string;
   citedUrls: string[];
   focusDemoAreas: Array<{ area: string; modules: string[]; helpUrl?: string }>;
   discoveryAreaIds?: string[];
+  discoveryEmphasis?: Record<string, string>;
+  scalingChallenge?: string;
+}
+
+interface TavilyHit {
+  title: string;
+  url: string;
+  content: string;
+}
+
+interface SearchMeta {
+  tavilyEnabled: boolean;
+  clientSourceCount: number;
+  factorialSourceCount: number;
+  model: string;
 }
 
 interface ClientProfile {
@@ -31,6 +45,13 @@ interface ClientProfile {
   employeeCount: string;
   demoGoal: string;
   focusModules: string[];
+}
+
+interface DiscoveryArea {
+  id: string;
+  title: string;
+  opener?: string;
+  questions: readonly string[];
 }
 
 interface GuideStep {
@@ -42,7 +63,7 @@ interface GuideStep {
   duration?: string;
   bullets?: string[];
   validationQuestion?: string;
-  discoveryAreas?: typeof DISCOVERY_AREAS;
+  discoveryAreas?: DiscoveryArea[];
   beforeItems?: string[];
   afterItems?: string[];
   demoModules?: Array<{
@@ -203,27 +224,28 @@ function videosForArea(area: string, focusModules: string[]): DemoVideo[] {
   });
 }
 
-async function searchFactorialDocs(query: string, language: string) {
+async function tavilySearch(
+  query: string,
+  options?: { includeDomains?: string[]; maxResults?: number },
+): Promise<TavilyHit[]> {
   const apiKey = process.env.TAVILY_API_KEY;
   if (!apiKey) return [];
 
-  const langDomain =
-    language === "pt"
-      ? "help.factorialhr.com/pt_PT"
-      : language === "es"
-        ? "help.factorialhr.com/es_ES"
-        : "help.factorialhr.com";
+  const body: Record<string, unknown> = {
+    api_key: apiKey,
+    query,
+    search_depth: "advanced",
+    max_results: options?.maxResults ?? 4,
+    include_answer: false,
+  };
+  if (options?.includeDomains?.length) {
+    body.include_domains = options.includeDomains;
+  }
 
   const response = await fetch("https://api.tavily.com/search", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      api_key: apiKey,
-      query: `${query} site:${langDomain}`,
-      search_depth: "basic",
-      max_results: 3,
-      include_answer: false,
-    }),
+    body: JSON.stringify(body),
   });
 
   if (!response.ok) return [];
@@ -235,37 +257,84 @@ async function searchFactorialDocs(query: string, language: string) {
   return (data.results ?? []).map((r) => ({
     title: r.title,
     url: r.url,
-    content: r.content.slice(0, 600),
+    content: r.content.slice(0, 900),
   }));
 }
 
-const SYSTEM_PROMPT = `You are the Factorial pre-demo preparation assistant.
+function factorialDomains(language: string): string[] {
+  const lang = language === "pt" ? "pt_PT" : language === "es" ? "es_ES" : "en_GB";
+  return [`help.factorialhr.com/${lang}`, "help.factorialhr.com"];
+}
+
+async function searchClientWeb(
+  clientName: string,
+  industry: string,
+): Promise<TavilyHit[]> {
+  const query = `${clientName} ${industry} company employees HR workforce operations`;
+  return tavilySearch(query, { maxResults: 5 });
+}
+
+async function searchFactorialDocs(
+  query: string,
+  language: string,
+): Promise<TavilyHit[]> {
+  return tavilySearch(query, {
+    includeDomains: factorialDomains(language),
+    maxResults: 4,
+  });
+}
+
+const MODULE_SEARCH_TERMS: Record<string, string> = {
+  recruitment: "recruitment ATS hiring candidates",
+  onboarding: "onboarding employee documents signatures",
+  "time-tracking": "time tracking attendance clock in mobile GPS",
+  "time-off": "time off leave management approvals",
+  documents: "employee documents digital files",
+  communication: "announcements payslips employee portal",
+  trainings: "trainings learning LMS",
+  performance: "performance review evaluations",
+  engagement: "engagement surveys one on one",
+};
+
+function formatExcerpts(hits: TavilyHit[]): string {
+  return hits
+    .filter((r, i, arr) => arr.findIndex((x) => x.url === r.url) === i)
+    .map((r) => `### ${r.title}\nURL: ${r.url}\n${r.content}`)
+    .join("\n\n");
+}
+
+const SYSTEM_PROMPT = `You are the Factorial pre-demo preparation assistant for sales discovery calls.
 
 RULES:
-- Use ONLY facts from the user's research notes about the client. Do not invent client details.
-- For Factorial product capabilities: only mention features supported by the documentation excerpts provided.
-- If documentation does not confirm a feature, do not mention it.
-- Include citedUrls with exact help center links from the documentation excerpts when making product claims.
-- Respond in the language specified by the user (en, pt, es, de, fr, it).
-- Output valid JSON only, matching the schema exactly.
-- Keep prepMarkdown concise (under 2000 words).
+- clientBullets: 4-6 specific bullets from research notes + client web excerpts ONLY. Include scale, workforce type (field/site/office), industry context. No generic marketing fluff.
+- For Factorial modules: ONLY use feature names that appear verbatim in FACTORIAL DOCUMENTATION EXCERPTS.
+- citedUrls: every help.factorialhr.com URL from factorial excerpts used in focusDemoAreas.
+- discoveryEmphasis: 1-2 sentences per area id explaining WHY this area matters for THIS client (construction, distributed sites, etc.).
+- scalingChallenge: one sentence — the real people-ops challenge at scale for this client (not "HR administration" alone).
+- closingScript: 3-5 sentences, specific to client name and industry, referencing what you learned.
+- Respond in the user's language.
+- Output valid JSON only.
 
 JSON schema:
 {
-  "clientBullets": ["4 bullet points about the client from research notes only"],
-  "closingScript": "2-4 sentences adapted to client and industry",
-  "prepMarkdown": "markdown prep document with 9 sections",
-  "citedUrls": ["urls from documentation excerpts used"],
+  "clientBullets": ["string"],
+  "closingScript": "string",
+  "citedUrls": ["url"],
   "focusDemoAreas": [
-    { "area": "Recruitment|Onboarding|Time & Attendance|Leave Management|Document Management|Internal Communication", "modules": ["feature names from docs only"], "helpUrl": "optional specific article url" }
+    { "area": "Recruitment|Onboarding|Time & Attendance|Leave Management|Document Management|Internal Communication", "modules": ["exact feature names from docs"], "helpUrl": "specific help article url if available" }
   ],
-  "discoveryAreaIds": ["recruitment|onboarding|attendance|leave|documents|communication"]
+  "discoveryAreaIds": ["recruitment|onboarding|attendance|leave|documents|communication"],
+  "discoveryEmphasis": { "recruitment": "why it matters for this client", "attendance": "..." },
+  "scalingChallenge": "string"
 }
 
-focusDemoAreas: 2-4 areas max, relevant to focusModules.
-discoveryAreaIds: 2-4 ids, most relevant first.`;
+focusDemoAreas: exactly match focusModules (2-5 areas). modules: 3-5 items each from docs only.
+discoveryAreaIds: 3-4 most relevant, ordered by priority.`;
 
-async function generatePrep(input: PrepInput, researchNotes: string): Promise<AIPrepPayload> {
+async function generatePrep(
+  input: PrepInput,
+  researchNotes: string,
+): Promise<{ ai: AIPrepPayload; searchMeta: SearchMeta }> {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
     throw new Error("OPENAI_API_KEY is not configured on the server.");
@@ -284,15 +353,27 @@ async function generatePrep(input: PrepInput, researchNotes: string): Promise<AI
   const model =
     envModel && ALLOWED_MODELS.has(envModel) ? envModel : "gpt-4o-mini";
 
-  const searchQueries = [...input.focusModules, `${input.industry} HR`].slice(0, 2);
-  const docResults = await Promise.all(
-    searchQueries.map((q) => searchFactorialDocs(q, input.language)),
-  );
-  const docContext = docResults
-    .flat()
-    .filter((r, i, arr) => arr.findIndex((x) => x.url === r.url) === i)
-    .map((r) => `### ${r.title}\nURL: ${r.url}\n${r.content}`)
-    .join("\n\n");
+  const tavilyEnabled = Boolean(process.env.TAVILY_API_KEY);
+
+  const factorialQueries = input.focusModules
+    .map((m) => MODULE_SEARCH_TERMS[m] ?? m)
+    .slice(0, 4);
+
+  const [clientHits, ...factorialHitGroups] = await Promise.all([
+    searchClientWeb(input.clientName, input.industry),
+    ...factorialQueries.map((q) => searchFactorialDocs(q, input.language)),
+  ]);
+
+  const factorialHits = factorialHitGroups.flat();
+  const clientContext = formatExcerpts(clientHits);
+  const docContext = formatExcerpts(factorialHits);
+
+  const searchMeta: SearchMeta = {
+    tavilyEnabled,
+    clientSourceCount: clientHits.length,
+    factorialSourceCount: factorialHits.length,
+    model,
+  };
 
   const userMessage = `LANGUAGE: ${input.language}
 
@@ -303,11 +384,14 @@ CLIENT:
 - Demo goal: ${input.demoGoal}
 - Focus modules: ${input.focusModules.join(", ")}
 
-RESEARCH NOTES:
-${researchNotes.slice(0, 6000)}
+RESEARCH NOTES (primary source for client facts):
+${researchNotes.slice(0, 8000)}
 
-FACTORIAL DOCUMENTATION EXCERPTS:
-${docContext || "No excerpts. Use generic module area names only. Leave citedUrls empty."}`;
+CLIENT WEB RESEARCH (secondary — verify against notes, do not contradict notes):
+${clientContext || "No web results. Use research notes only for client facts."}
+
+FACTORIAL DOCUMENTATION EXCERPTS (only source for product/module names):
+${docContext || "No factorial docs found. Use generic area names only. citedUrls must be empty."}`;
 
   const response = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
@@ -344,14 +428,162 @@ ${docContext || "No excerpts. Use generic module area names only. Leave citedUrl
     throw new Error("Invalid AI response structure");
   }
 
-  return {
+  const clientUrls = clientHits.map((h) => h.url);
+  const factorialUrls = (parsed.citedUrls ?? []).length
+    ? (parsed.citedUrls ?? [])
+    : factorialHits.map((h) => h.url);
+
+  const ai: AIPrepPayload = {
     clientBullets: parsed.clientBullets,
     closingScript: parsed.closingScript,
-    prepMarkdown: parsed.prepMarkdown ?? "",
-    citedUrls: parsed.citedUrls ?? [],
+    citedUrls: [...new Set([...factorialUrls, ...clientUrls])],
     focusDemoAreas: parsed.focusDemoAreas,
     discoveryAreaIds: parsed.discoveryAreaIds,
+    discoveryEmphasis: parsed.discoveryEmphasis,
+    scalingChallenge: parsed.scalingChallenge,
   };
+
+  return { ai, searchMeta };
+}
+
+function buildPrepMarkdown(
+  input: PrepInput,
+  ai: AIPrepPayload,
+  searchMeta: SearchMeta,
+): string {
+  const { clientName, industry, employeeCount, demoGoal } = input;
+  const emphasis = ai.discoveryEmphasis ?? {};
+  const scaling =
+    ai.scalingChallenge ??
+    `scaling people operations across ${industry} sites while maintaining operational discipline`;
+
+  const discoverySections = DISCOVERY_AREAS.map((area) => {
+    const custom = emphasis[area.id];
+    const questions = area.questions.map((q) => `  - ${q}`).join("\n");
+    const openerText = "opener" in area && area.opener ? `\n> "${area.opener}"\n` : "";
+    return `### ${area.title}\n${custom ? `**Why for ${clientName}:** ${custom}\n` : ""}${openerText}\n${questions}`;
+  }).join("\n\n");
+
+  const demoTable = ai.focusDemoAreas
+    .map(
+      (mod) =>
+        `| ${mod.area} | ${mod.modules.join(", ")} | ${mod.helpUrl ?? "—"} |`,
+    )
+    .join("\n");
+
+  const sourcesBlock =
+    ai.citedUrls.length > 0
+      ? ai.citedUrls.map((u) => `- ${u}`).join("\n")
+      : "_No documentation URLs — add TAVILY_API_KEY on Vercel for Factorial help search._";
+
+  return `# ${clientName} — Pre-Demo Preparation
+
+## 1. Agenda (1 min)
+
+**Today's Goal**
+
+- Understand ${clientName}'s current HR operations
+- Validate the main challenges impacting growth
+- Show how similar ${industry} organizations solve these challenges
+- Explore whether Factorial could support ${clientName}'s next stage of growth
+
+_Demo goal: ${demoGoal}_
+
+---
+
+## 2. What We Learned About ${clientName} (2 min)
+
+First, let me confirm that I understood your business correctly.
+
+### ${clientName} Today
+
+${ai.clientBullets.map((b) => `- ${b}`).join("\n")}
+
+### What Makes ${clientName} Unique
+
+${employeeCount} employees in ${industry}. ${scaling}
+
+**Question:** "Would you say this accurately reflects your operation today?"
+
+---
+
+## 3. Discovery Section (15–20 min)
+
+This becomes a conversation, not a presentation.
+
+${discoverySections}
+
+---
+
+## 4. Executive Summary of Findings
+
+_Fill live during the call._
+
+**Challenge #1** — Example + Impact  
+**Challenge #2** — Example + Impact  
+**Challenge #3** — Example + Impact
+
+**Question:** "Would you agree these are the main areas worth improving first?"
+
+---
+
+## 5. The Future State (Vision)
+
+Imagine a Site Manager / Branch Manager
+
+**Instead of:** WhatsApp · Excel · Paper forms · Email chains
+
+**They can:** Approve leave · Review schedules · Track attendance · Access employee records · Manage onboarding
+
+From one platform.
+
+---
+
+## 6. Factorial Demo
+
+Only show what solves their pain.
+
+| Focus area | Modules to show | Help article |
+|------------|-----------------|--------------|
+${demoTable}
+
+---
+
+## 7. Business Impact
+
+- Reduce administrative work on site and in HQ
+- Faster hiring for project-based workforce needs
+- Improved visibility across sites and field teams
+- More accurate attendance before payroll
+- Faster onboarding for new site staff
+- Better employee experience
+- Higher HR scalability as ${clientName} expands
+
+---
+
+## 8. Commercial Discussion
+
+- If we solved these challenges, what would success look like for ${clientName}?
+- Who else should be involved in this evaluation?
+- What is the ideal timeline for implementation?
+- Are there any concerns we should address early?
+
+---
+
+## 9. Strong Closing
+
+${ai.closingScript}
+
+---
+
+## Sources
+
+${sourcesBlock}
+
+_Tavily: ${searchMeta.tavilyEnabled ? "enabled" : "NOT configured"} · Client sources: ${searchMeta.clientSourceCount} · Factorial sources: ${searchMeta.factorialSourceCount} · Model: ${searchMeta.model}_
+
+_Prepared by Victor Gutierrez · victor.gutierrez@factorial.co_
+`;
 }
 
 function helpBase(language: string): string {
@@ -569,14 +801,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       input.focusModules = ["recruitment", "time-tracking", "time-off"];
     }
 
-    const ai = await generatePrep(input, researchNotes);
+    const { ai, searchMeta } = await generatePrep(input, researchNotes);
     const { client, guideSteps } = buildGuide(input, ai);
+    const prepMarkdown = buildPrepMarkdown(input, ai, searchMeta);
 
     return res.status(200).json({
       client,
       guideSteps,
-      prepMarkdown: ai.prepMarkdown,
+      prepMarkdown,
       citedUrls: ai.citedUrls,
+      meta: searchMeta,
     });
   } catch (error) {
     console.error("preparar error:", error);

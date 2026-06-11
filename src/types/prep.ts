@@ -8,11 +8,19 @@ export interface ClientProfile {
   focusModules: string[];
 }
 
+export interface PrepMeta {
+  tavilyEnabled: boolean;
+  clientSourceCount: number;
+  factorialSourceCount: number;
+  model: string;
+}
+
 export interface PrepSession {
   client: ClientProfile;
   guideSteps: GuideStep[];
   prepMarkdown: string;
   citedUrls: string[];
+  meta?: PrepMeta;
   createdAt: string;
 }
 
@@ -31,4 +39,5 @@ export interface PrepareApiResponse {
   guideSteps: GuideStep[];
   prepMarkdown: string;
   citedUrls: string[];
+  meta?: PrepMeta;
 }

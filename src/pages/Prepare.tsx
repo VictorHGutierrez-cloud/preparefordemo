@@ -87,14 +87,23 @@ const Prepare = () => {
         guideSteps: result.guideSteps,
         prepMarkdown: result.prepMarkdown,
         citedUrls: result.citedUrls,
+        meta: result.meta,
       });
 
       setLastMarkdown(result.prepMarkdown);
       setLastClientName(form.clientName.trim());
 
+      const meta = result.meta;
+      const sourceDesc = meta
+        ? `${result.citedUrls.length} sources · ${meta.clientSourceCount} client · ${meta.factorialSourceCount} Factorial docs`
+        : `${result.citedUrls.length} sources cited`;
+
       toast({
         title: "Demo prepared",
-        description: `${result.citedUrls.length} documentation sources cited.`,
+        description: meta?.tavilyEnabled
+          ? sourceDesc
+          : `${sourceDesc}. Tip: add TAVILY_API_KEY on Vercel for richer research.`,
+        variant: meta?.tavilyEnabled ? "default" : "destructive",
       });
 
       navigate("/guia");
